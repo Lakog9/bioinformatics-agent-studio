@@ -1,0 +1,10 @@
+name: bioagent-r
+channels:
+  - defaults
+dependencies:
+  - r-pheatmap
+  - bioconductor-airway
+  - bioconductor-deseq2
+  - r-base=4.4
+  - r-ggplot2
+prefix: /home/petrosk/miniconda3/envs/bioagent-r
