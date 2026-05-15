@@ -50,5 +50,23 @@
       "baseMean": 2344.0793,
       "_row": "ENSG00000189221"
     }
-  ]
+  ],
+  "pathway_enrichment": {
+    "total_terms": 415,
+    "upregulated": {
+      "GO:BP": ["developmental process", "anatomical structure development", "multicellular organismal process", "response to stimulus", "multicellular organism development"],
+      "n_terms": 144
+    },
+    "downregulated": {
+      "GO:BP": ["multicellular organismal process", "regulation of multicellular organismal process", "cell communication", "signaling", "multicellular organism development"],
+      "n_terms": 271
+    },
+    "source_breakdown": {
+      "GO:BP": 314,
+      "GO:CC": 59,
+      "GO:MF": 27,
+      "KEGG": 9,
+      "REAC": 6
+    }
+  }
 }
