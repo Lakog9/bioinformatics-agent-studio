@@ -197,7 +197,7 @@ def run_agents(out_dir):
 
     if qc_json.exists():
         t0 = time.time()
-        run_subprocess(["python", str(QC_AGENT), str(qc_json)],
+        run_subprocess([sys.executable, str(QC_AGENT), str(qc_json)],
                        cwd=REPO_ROOT, label="QC agent")
         print(f"  QC agent done in {time.time() - t0:.1f}s")
     else:
@@ -205,7 +205,7 @@ def run_agents(out_dir):
 
     if summary_json.exists():
         t0 = time.time()
-        run_subprocess(["python", str(REPORT_AGENT), str(summary_json)],
+        run_subprocess([sys.executable, str(REPORT_AGENT), str(summary_json)],
                        cwd=REPO_ROOT, label="Report writer agent")
         print(f"  Report writer done in {time.time() - t0:.1f}s")
     else:
