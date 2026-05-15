@@ -26,18 +26,22 @@ smooth muscle cells (Himes et al. 2014).
 
 **Results**: 4,099 DEGs at padj < 0.05 (2,201 up / 1,898 down)
 
-**Agent used**: Report Writer Agent → auto-generated executive summary,
-results interpretation, and limitations section
+**Top genes**: SPARCL1, CACNB2, DUSP1, SAMHD1, MAOA
+
+**Agents used**:
+- QC Agent → automated sample flagging before analysis
+- Report Writer Agent → auto-generated scientific narrative
 
 → [`projects/01-airway-deseq2/`](projects/01-airway-deseq2/)
 
 ## Agents
 
-| Agent | Input | Output | Cost/run |
-|---|---|---|---|
-| Report Writer | `analysis_summary.json` | `narrative.md` | ~$0.02 |
+| Agent | Input | Output | What it does | Cost/run |
+|---|---|---|---|---|
+| QC Agent | `qc_metrics.json` | `qc_report.md` | Flags each sample 🟢🟡🔴 based on library size, gene detection, PCA outlier status | ~$0.02 |
+| Report Writer | `analysis_summary.json` | `narrative.md` | Generates executive summary, results interpretation, limitations | ~$0.02 |
 
-*More agents in development: QC Agent, ML Classifier Agent, Literature Review Agent*
+*More agents in development: ML Classifier Agent, Literature Review Agent*
 
 ## How to run
 
@@ -51,20 +55,23 @@ echo "ANTHROPIC_API_KEY=your-key-here" > .env
 
 # 3. Run a project (example: airway DESeq2)
 cd projects/01-airway-deseq2
-Rscript scripts/01_deseq2_analysis.R     # ~2 min
+Rscript scripts/01_deseq2_analysis.R     # ~2 min — analysis + QC metrics + summary JSON
+
 cd ../..
-python agents/report_writer_agent.py     # ~10 sec, ~$0.02
+python agents/qc_agent.py               # ~10 sec, ~$0.02 — QC flags per sample
+python agents/report_writer_agent.py    # ~10 sec, ~$0.02 — scientific narrative
+
 cd projects/01-airway-deseq2
-quarto render report/report.qmd          # ~1 min
+quarto render report/report.qmd         # ~1 min — final HTML report
 ```
 
 Output: `projects/01-airway-deseq2/report/report.html`
 
 ## Stack
 
-- **R 4.4** + DESeq2, ggplot2, pheatmap, Quarto
+- **R 4.4** + DESeq2, ggplot2, pheatmap, org.Hs.eg.db, Quarto
 - **Python 3.14** + anthropic SDK, python-dotenv
-- **Claude Sonnet** (via Anthropic API) for narrative generation
+- **Claude Sonnet** (via Anthropic API) for narrative and QC report generation
 - **conda** for environment management
 - **git** for version control
 
@@ -75,6 +82,7 @@ Output: `projects/01-airway-deseq2/report/report.html`
 - Every analysis is **fully reproducible** from raw inputs
 - Narrative generation enforces **scientific writing guardrails**
   (no causality claims, distinguishes statistical from biological significance)
+- QC runs **before** analysis — bad samples are flagged, not silently analyzed
 
 ## Author
 
