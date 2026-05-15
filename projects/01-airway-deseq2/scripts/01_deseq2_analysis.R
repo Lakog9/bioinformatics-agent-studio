@@ -72,4 +72,26 @@ dev.off()
 # --- 9. Save ---
 saveRDS(dds, "data/dds.rds")
 saveRDS(res, "data/results.rds")
+# --- 10. Export summary for Report Writer Agent ---
+library(jsonlite)
+
+top5 <- head(res_sig[, c("gene", "log2FoldChange", "padj", "baseMean")], 5)
+
+summary_list <- list(
+  dataset = "airway",
+  comparison = "trt vs untrt",
+  organism = "Homo sapiens",
+  total_genes_tested = n_total <- sum(!is.na(res$padj)),
+  genes_after_filter = nrow(dds),
+  significant_degs = nrow(res_sig),
+  upregulated = sum(res_sig$log2FoldChange > 0),
+  downregulated = sum(res_sig$log2FoldChange < 0),
+  pca_pc1_variance = pv[1],
+  pca_pc2_variance = pv[2],
+  top5_genes = top5
+)
+
+write(toJSON(summary_list, pretty = TRUE, auto_unbox = TRUE),
+      "data/analysis_summary.json")
+cat("Summary exported to data/analysis_summary.json\n")
 cat("\n=== DONE ===\n")

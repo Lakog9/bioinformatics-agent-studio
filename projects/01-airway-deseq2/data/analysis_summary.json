@@ -1,0 +1,49 @@
+{
+  "dataset": "airway",
+  "comparison": "trt vs untrt",
+  "organism": "Homo sapiens",
+  "total_genes_tested": 16596,
+  "genes_after_filter": 16596,
+  "significant_degs": 4099,
+  "upregulated": 2201,
+  "downregulated": 1898,
+  "pca_pc1_variance": 48,
+  "pca_pc2_variance": 24,
+  "top5_genes": [
+    {
+      "gene": "ENSG00000152583",
+      "log2FoldChange": 4.5723,
+      "padj": 3.5793e-132,
+      "baseMean": 998.3379,
+      "_row": "ENSG00000152583"
+    },
+    {
+      "gene": "ENSG00000165995",
+      "log2FoldChange": 3.2885,
+      "padj": 8.6027e-132,
+      "baseMean": 495.7439,
+      "_row": "ENSG00000165995"
+    },
+    {
+      "gene": "ENSG00000120129",
+      "log2FoldChange": 2.9452,
+      "padj": 1.2192e-124,
+      "baseMean": 3412.9664,
+      "_row": "ENSG00000120129"
+    },
+    {
+      "gene": "ENSG00000101347",
+      "log2FoldChange": 3.7644,
+      "padj": 1.8831e-124,
+      "baseMean": 12718.306,
+      "_row": "ENSG00000101347"
+    },
+    {
+      "gene": "ENSG00000189221",
+      "log2FoldChange": 3.351,
+      "padj": 2.5664e-119,
+      "baseMean": 2344.0793,
+      "_row": "ENSG00000189221"
+    }
+  ]
+}
