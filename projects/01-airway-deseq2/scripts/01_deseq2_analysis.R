@@ -147,5 +147,35 @@ summary_list <- list(
 write(toJSON(summary_list, pretty = TRUE, auto_unbox = TRUE),
       "data/analysis_summary.json")
 cat("Summary exported to data/analysis_summary.json\n")
+# --- 13. Export QC metrics for QC Agent ---
+library_sizes <- colSums(counts(dds))
+pct_genes_detected <- colMeans(counts(dds) > 0) * 100
+mean_counts <- colMeans(counts(dds))
 
+qc_metrics <- list(
+  samples = lapply(colnames(dds), function(s) {
+    list(
+      sample_id = s,
+      condition = as.character(colData(dds)[s, "dex"]),
+      cell_line = as.character(colData(dds)[s, "cell"]),
+      library_size = library_sizes[[s]],
+      pct_genes_detected = round(pct_genes_detected[[s]], 2),
+      mean_count = round(mean_counts[[s]], 2),
+      pca_pc1 = round(pca_data[pca_data$name == s, "PC1"], 3),
+      pca_pc2 = round(pca_data[pca_data$name == s, "PC2"], 3)
+    )
+  }),
+  thresholds = list(
+    library_size_red = 1000000,
+    library_size_yellow = 5000000,
+    pct_genes_detected_red = 20,
+    pca_outlier_sd = 2.0
+  ),
+  n_samples = ncol(dds),
+  n_genes_tested = nrow(dds)
+)
+
+write(toJSON(qc_metrics, pretty = TRUE, auto_unbox = TRUE),
+      "data/qc_metrics.json")
+cat("QC metrics exported to data/qc_metrics.json\n")
 cat("\n=== DONE ===\n")

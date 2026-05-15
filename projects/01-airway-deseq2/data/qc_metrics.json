@@ -1,0 +1,92 @@
+{
+  "samples": [
+    {
+      "sample_id": "SRR1039508",
+      "condition": "untrt",
+      "cell_line": "N61311",
+      "library_size": 20614946,
+      "pct_genes_detected": 99.9,
+      "mean_count": 1242.16,
+      "pca_pc1": -16.617,
+      "pca_pc2": -3.071
+    },
+    {
+      "sample_id": "SRR1039509",
+      "condition": "trt",
+      "cell_line": "N61311",
+      "library_size": 18788624,
+      "pct_genes_detected": 99.84,
+      "mean_count": 1132.12,
+      "pca_pc1": 8.776,
+      "pca_pc2": -0.667
+    },
+    {
+      "sample_id": "SRR1039512",
+      "condition": "untrt",
+      "cell_line": "N052611",
+      "library_size": 25318862,
+      "pct_genes_detected": 99.94,
+      "mean_count": 1525.6,
+      "pca_pc1": -10.068,
+      "pca_pc2": -5.231
+    },
+    {
+      "sample_id": "SRR1039513",
+      "condition": "trt",
+      "cell_line": "N052611",
+      "library_size": 15148260,
+      "pct_genes_detected": 99.84,
+      "mean_count": 912.77,
+      "pca_pc1": 16.936,
+      "pca_pc2": -4.321
+    },
+    {
+      "sample_id": "SRR1039516",
+      "condition": "untrt",
+      "cell_line": "N080611",
+      "library_size": 24419686,
+      "pct_genes_detected": 99.88,
+      "mean_count": 1471.42,
+      "pca_pc1": -14.085,
+      "pca_pc2": 13.733
+    },
+    {
+      "sample_id": "SRR1039517",
+      "condition": "trt",
+      "cell_line": "N080611",
+      "library_size": 30784808,
+      "pct_genes_detected": 99.92,
+      "mean_count": 1854.95,
+      "pca_pc1": 10.319,
+      "pca_pc2": 18.086
+    },
+    {
+      "sample_id": "SRR1039520",
+      "condition": "untrt",
+      "cell_line": "N061011",
+      "library_size": 19100122,
+      "pct_genes_detected": 99.89,
+      "mean_count": 1150.89,
+      "pca_pc1": -12.252,
+      "pca_pc2": -10.154
+    },
+    {
+      "sample_id": "SRR1039521",
+      "condition": "trt",
+      "cell_line": "N061011",
+      "library_size": 21140857,
+      "pct_genes_detected": 99.82,
+      "mean_count": 1273.85,
+      "pca_pc1": 16.99,
+      "pca_pc2": -8.374
+    }
+  ],
+  "thresholds": {
+    "library_size_red": 1000000,
+    "library_size_yellow": 5000000,
+    "pct_genes_detected_red": 20,
+    "pca_outlier_sd": 2
+  },
+  "n_samples": 8,
+  "n_genes_tested": 16596
+}
