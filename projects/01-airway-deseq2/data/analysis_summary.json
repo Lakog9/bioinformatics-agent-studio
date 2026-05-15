@@ -1,5 +1,5 @@
 {
-  "dataset": "airway",
+  "dataset": "counts",
   "comparison": "trt vs untrt",
   "organism": "Homo sapiens",
   "total_genes_tested": 16596,
@@ -9,6 +9,7 @@
   "downregulated": 1898,
   "pca_pc1_variance": 48,
   "pca_pc2_variance": 24,
+  "design_formula": "~cell + dex",
   "top5_genes": [
     {
       "ensembl_id": "ENSG00000152583",
@@ -16,6 +17,9 @@
       "log2FoldChange": 4.5723,
       "padj": 3.5793e-132,
       "baseMean": 998.3379,
+      "lfcSE": 0.1839,
+      "stat": 24.8573,
+      "pvalue": 2.1568e-136,
       "_row": "ENSG00000152583"
     },
     {
@@ -24,6 +28,9 @@
       "log2FoldChange": 3.2885,
       "padj": 8.6027e-132,
       "baseMean": 495.7439,
+      "lfcSE": 0.1326,
+      "stat": 24.7941,
+      "pvalue": 1.0367e-135,
       "_row": "ENSG00000165995"
     },
     {
@@ -32,6 +39,9 @@
       "log2FoldChange": 2.9452,
       "padj": 1.2192e-124,
       "baseMean": 3412.9664,
+      "lfcSE": 0.1222,
+      "stat": 24.1052,
+      "pvalue": 2.204e-128,
       "_row": "ENSG00000120129"
     },
     {
@@ -40,6 +50,9 @@
       "log2FoldChange": 3.7644,
       "padj": 1.8831e-124,
       "baseMean": 12718.306,
+      "lfcSE": 0.1564,
+      "stat": 24.0753,
+      "pvalue": 4.5386e-128,
       "_row": "ENSG00000101347"
     },
     {
@@ -48,25 +61,10 @@
       "log2FoldChange": 3.351,
       "padj": 2.5664e-119,
       "baseMean": 2344.0793,
+      "lfcSE": 0.1422,
+      "stat": 23.5705,
+      "pvalue": 7.7321e-123,
       "_row": "ENSG00000189221"
     }
-  ],
-  "pathway_enrichment": {
-    "total_terms": 415,
-    "upregulated": {
-      "GO:BP": ["developmental process", "anatomical structure development", "multicellular organismal process", "response to stimulus", "multicellular organism development"],
-      "n_terms": 144
-    },
-    "downregulated": {
-      "GO:BP": ["multicellular organismal process", "regulation of multicellular organismal process", "cell communication", "signaling", "multicellular organism development"],
-      "n_terms": 271
-    },
-    "source_breakdown": {
-      "GO:BP": 314,
-      "GO:CC": 59,
-      "GO:MF": 27,
-      "KEGG": 9,
-      "REAC": 6
-    }
-  }
+  ]
 }
