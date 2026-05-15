@@ -225,10 +225,18 @@ summary = {
             "auc": test_results[name]["auc"],
             "precision": test_results[name]["precision"],
             "recall": test_results[name]["recall"],
-            "f1": test_results[name]["f1"]
+            "f1": test_results[name]["f1"],
+            "confusion_matrix": {
+                "tn": test_results[name]["confusion_matrix"][0][0],
+                "fp": test_results[name]["confusion_matrix"][0][1],
+                "fn": test_results[name]["confusion_matrix"][1][0],
+                "tp": test_results[name]["confusion_matrix"][1][1]
+            }
         }
         for name in models
     },
+    "n_test_positive": int(sum(y_test == 1)),
+    "n_test_negative": int(sum(y_test == 0)),
     "top10_features_random_forest": {
         name: float(imp) for name, imp in top10_features.items()
     },
