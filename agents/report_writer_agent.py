@@ -1,31 +1,29 @@
 #!/usr/bin/env python3
 """
-Report Writer Agent
-===================
-Reads analysis_summary.json produced by the R pipeline and generates
-scientific narrative for the Quarto report using the Claude API.
+Report Writer Agent (generic)
+=============================
+Reads any analysis_summary.json (RNA-seq differential expression style)
+and generates scientific narrative using the Claude API.
+
+Generic: no hardcoded gene names or dataset assumptions.
+All context comes from the JSON input.
 
 Usage:
-    python agents/report_writer_agent.py
+    python agents/report_writer_agent.py [path-to-summary.json]
 
-Output:
-    projects/01-airway-deseq2/report/narrative.md
+If no path is given, defaults to projects/01-airway-deseq2/data/analysis_summary.json
 """
 
 import json
-import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 from anthropic import Anthropic
 
-# Load API key from .env in project root
 load_dotenv(Path(__file__).parent.parent / ".env")
 client = Anthropic()
 
-# Paths (relative to project root)
-BASE_DIR = Path(__file__).parent.parent / "projects" / "01-airway-deseq2"
-SUMMARY_PATH = BASE_DIR / "data" / "analysis_summary.json"
-OUTPUT_PATH = BASE_DIR / "report" / "narrative.md"
+DEFAULT_SUMMARY = Path(__file__).parent.parent / "projects" / "01-airway-deseq2" / "data" / "analysis_summary.json"
 
 SYSTEM_PROMPT = """You are a scientific writer specializing in computational biology and RNA-seq analysis.
 Your task is to write clear, precise scientific narrative for a differential expression analysis report.
@@ -35,97 +33,97 @@ STRICT SCIENTIFIC RULES:
 - Do not overinterpret: high log2FC does not imply biological importance without functional context
 - Distinguish between statistical significance (padj) and biological significance (effect size)
 - Do not claim causality from observational transcriptomic data
+- When discussing specific genes, use gene_symbol fields from the input (not Ensembl IDs)
+- Apply your knowledge of gene function for interpretation, but never invent data not in the input
 - Write in past tense, third person, formal scientific register
 - Be concise: 2-3 paragraphs per section, no bullet points, prose only
 
-OUTPUT FORMAT:
-Write exactly three sections with these exact markdown headers:
+OUTPUT FORMAT — write exactly these three sections:
 ## Executive Summary
 ## Results Interpretation
 ## Limitations"""
 
 
 def load_summary(path: Path) -> dict:
+    if not path.exists():
+        raise FileNotFoundError(f"Summary not found at: {path}")
     with open(path) as f:
         return json.load(f)
 
 
-def generate_narrative(summary: dict) -> str:
-    """Call Claude to generate scientific narrative from analysis summary."""
-
-    user_message = f"""Generate scientific narrative for this RNA-seq differential expression analysis.
+def generate_narrative(summary: dict) -> tuple[str, int, int]:
+    user_message = f"""Generate scientific narrative for this differential expression analysis.
 
 ANALYSIS SUMMARY:
 {json.dumps(summary, indent=2)}
 
-ADDITIONAL CONTEXT (for interpretation):
-- Dataset: airway Bioconductor package (Himes et al. 2014, PMID 24926665)
-- Treatment: dexamethasone (synthetic glucocorticoid, 1 µM, 18h)
-- Cell type: primary human airway smooth muscle cells
-- Design: paired (4 cell lines x 2 conditions, balanced)
-- Top gene ENSG00000152583 = SPARCL1 (secreted protein, extracellular matrix)
-- Top gene ENSG00000165995 = CACNB2 (voltage-gated calcium channel subunit)
-- Top gene ENSG00000120129 = DUSP1 (dual specificity phosphatase 1, known glucocorticoid-induced gene)
-- Top gene ENSG00000101347 = SAMHD1 (SAM and HD domain-containing deoxynucleoside triphosphohydrolase)
-- Top gene ENSG00000189221 = MAOA (monoamine oxidase A)
+INSTRUCTIONS:
+- All facts must come from the JSON above
+- When mentioning genes, prefer gene_symbol over ensembl_id
+- Use your scientific knowledge to interpret findings, but do not invent numbers
+- If pathway_enrichment is present, integrate it into Results Interpretation
 
-Write the three narrative sections (Executive Summary, Results Interpretation, Limitations).
-Follow the scientific rules strictly. Do not invent data not present in the summary."""
+Write the three narrative sections now."""
 
-    print("  Calling Claude API...")
     response = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=1500,
+        max_tokens=1800,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_message}]
     )
 
-    print(f"  Tokens used: {response.usage.input_tokens} in / {response.usage.output_tokens} out")
-    estimated_cost = (response.usage.input_tokens * 3 + response.usage.output_tokens * 15) / 1_000_000
-    print(f"  Estimated cost: ${estimated_cost:.4f}")
-
-    return response.content[0].text
-
-
-def save_narrative(narrative: str, path: Path):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
-        f.write(narrative)
-    print(f"  Saved to: {path}")
+    return (response.content[0].text,
+            response.usage.input_tokens,
+            response.usage.output_tokens)
 
 
 def main():
+    # Allow custom JSON path via CLI
+    if len(sys.argv) > 1:
+        summary_path = Path(sys.argv[1]).resolve()
+    else:
+        summary_path = DEFAULT_SUMMARY
+
     print("=" * 40)
-    print("  Report Writer Agent")
+    print("  Report Writer Agent (generic)")
     print("=" * 40)
 
-    # Check input
-    if not SUMMARY_PATH.exists():
-        print(f"\nERROR: analysis_summary.json not found at:\n  {SUMMARY_PATH}")
-        print("Run the R pipeline first: Rscript scripts/01_deseq2_analysis.R")
-        return
+    print(f"\n[1/3] Loading: {summary_path}")
+    try:
+        summary = load_summary(summary_path)
+    except FileNotFoundError as e:
+        print(f"\nERROR: {e}")
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"\nERROR: Invalid JSON in {summary_path}: {e}")
+        sys.exit(1)
 
-    # Load summary
-    print(f"\n[1/3] Loading analysis summary...")
-    summary = load_summary(SUMMARY_PATH)
-    print(f"  Dataset:    {summary['dataset']}")
-    print(f"  Comparison: {summary['comparison']}")
-    print(f"  DEGs:       {summary['significant_degs']} total "
-          f"({summary['upregulated']} up / {summary['downregulated']} down)")
+    print(f"  Dataset:    {summary.get('dataset', 'unknown')}")
+    print(f"  Comparison: {summary.get('comparison', 'unknown')}")
+    if 'significant_degs' in summary:
+        print(f"  DEGs:       {summary['significant_degs']} total")
 
-    # Generate narrative
-    print(f"\n[2/3] Generating narrative...")
-    narrative = generate_narrative(summary)
+    print(f"\n[2/3] Calling Claude API...")
+    try:
+        narrative, t_in, t_out = generate_narrative(summary)
+    except Exception as e:
+        print(f"\nERROR: API call failed: {e}")
+        sys.exit(1)
 
-    # Save output
-    print(f"\n[3/3] Saving narrative...")
-    save_narrative(narrative, OUTPUT_PATH)
+    cost = (t_in * 3 + t_out * 15) / 1_000_000
+    print(f"  Tokens: {t_in} in / {t_out} out")
+    print(f"  Cost:   ${cost:.4f}")
+
+    # Output goes next to the input JSON
+    output_path = summary_path.parent.parent / "report" / "narrative.md"
+    print(f"\n[3/3] Saving to: {output_path}")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as f:
+        f.write(narrative)
 
     print(f"\n{'=' * 40}")
-    print(f"  DONE")
-    print(f"  Output: {OUTPUT_PATH}")
+    print(f"  DONE  |  Output: {output_path}")
     print(f"{'=' * 40}")
-    print("\nNext step: review narrative.md, then re-render the Quarto report.")
 
 
 if __name__ == "__main__":
