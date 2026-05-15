@@ -2,7 +2,7 @@
 
 AI-assisted bioinformatics and data analysis workflows with automated report generation.
 
-Each project combines established bioinformatics pipelines (R/Bioconductor, Python)
+Each project combines established bioinformatics pipelines (R/Bioconductor, Python/sklearn)
 with LLM-powered agents that automate narrative generation, QC review, and
 scientific reporting — while keeping human review at every critical decision point.
 
@@ -22,17 +22,29 @@ A portfolio of reproducible analysis workflows where:
 Bulk RNA-seq analysis comparing dexamethasone-treated vs untreated human airway
 smooth muscle cells (Himes et al. 2014).
 
-**Pipeline**: count matrix → DESeq2 → PCA + volcano + heatmap → report
+**Pipeline**: count matrix → DESeq2 → gene symbols → PCA + volcano + heatmap → report
 
-**Results**: 4,099 DEGs at padj < 0.05 (2,201 up / 1,898 down)
+**Results**: 4,099 DEGs at padj < 0.05 | Top genes: SPARCL1, CACNB2, DUSP1, SAMHD1, MAOA
 
-**Top genes**: SPARCL1, CACNB2, DUSP1, SAMHD1, MAOA
-
-**Agents used**:
-- QC Agent → automated sample flagging before analysis
-- Report Writer Agent → auto-generated scientific narrative
+**Agents**: QC Agent (sample flagging) + Report Writer Agent (narrative generation)
 
 → [`projects/01-airway-deseq2/`](projects/01-airway-deseq2/)
+
+---
+
+### 02 — Breast Cancer Classification
+
+Binary classification of breast tumors (malignant vs benign) from digitized cell
+nucleus measurements, comparing Logistic Regression and Random Forest.
+
+**Pipeline**: Wisconsin dataset → StandardScaler → 5-fold CV → holdout evaluation → feature importance
+
+**Results**: LR test AUC = 0.996, accuracy = 96.5% | Top features: worst perimeter, worst area, worst concave points
+
+**Key finding**: Logistic Regression outperforms Random Forest despite lower complexity —
+"worst" (most extreme) nucleus measurements dominate over mean measurements.
+
+→ [`projects/02-breast-cancer-ml/`](projects/02-breast-cancer-ml/)
 
 ## Agents
 
@@ -41,48 +53,44 @@ smooth muscle cells (Himes et al. 2014).
 | QC Agent | `qc_metrics.json` | `qc_report.md` | Flags each sample 🟢🟡🔴 based on library size, gene detection, PCA outlier status | ~$0.02 |
 | Report Writer | `analysis_summary.json` | `narrative.md` | Generates executive summary, results interpretation, limitations | ~$0.02 |
 
-*More agents in development: ML Classifier Agent, Literature Review Agent*
+*More agents in development: ML Results Agent, Literature Review Agent*
 
 ## How to run
 
 ```bash
-# 1. Set up environment
+# Setup
 conda env create -f environment.yml
 conda activate bioagent-r
-
-# 2. Add your Anthropic API key
 echo "ANTHROPIC_API_KEY=your-key-here" > .env
 
-# 3. Run a project (example: airway DESeq2)
+# Project 01: RNA-seq
 cd projects/01-airway-deseq2
-Rscript scripts/01_deseq2_analysis.R     # ~2 min — analysis + QC metrics + summary JSON
-
+Rscript scripts/01_deseq2_analysis.R     # ~2 min
 cd ../..
-python agents/qc_agent.py               # ~10 sec, ~$0.02 — QC flags per sample
-python agents/report_writer_agent.py    # ~10 sec, ~$0.02 — scientific narrative
-
+python agents/qc_agent.py               # ~10 sec, ~$0.02
+python agents/report_writer_agent.py    # ~10 sec, ~$0.02
 cd projects/01-airway-deseq2
-quarto render report/report.qmd         # ~1 min — final HTML report
-```
+quarto render report/report.qmd         # ~1 min
 
-Output: `projects/01-airway-deseq2/report/report.html`
+# Project 02: ML classifier
+python projects/02-breast-cancer-ml/scripts/01_train_classifier.py  # ~30 sec
+```
 
 ## Stack
 
 - **R 4.4** + DESeq2, ggplot2, pheatmap, org.Hs.eg.db, Quarto
-- **Python 3.14** + anthropic SDK, python-dotenv
-- **Claude Sonnet** (via Anthropic API) for narrative and QC report generation
+- **Python 3.14** + anthropic SDK, scikit-learn, pandas, matplotlib, seaborn
+- **Claude Sonnet** (via Anthropic API) for report and QC narrative generation
 - **conda** for environment management
-- **git** for version control
 
 ## Design principles
 
 - Agents are **specialists with constrained outputs**, not autonomous decision-makers
 - Scientific conclusions require **human validation** before delivery
 - Every analysis is **fully reproducible** from raw inputs
+- QC runs **before** analysis — bad samples are flagged, not silently analyzed
 - Narrative generation enforces **scientific writing guardrails**
   (no causality claims, distinguishes statistical from biological significance)
-- QC runs **before** analysis — bad samples are flagged, not silently analyzed
 
 ## Author
 
