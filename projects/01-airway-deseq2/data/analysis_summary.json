@@ -11,35 +11,40 @@
   "pca_pc2_variance": 24,
   "top5_genes": [
     {
-      "gene": "ENSG00000152583",
+      "ensembl_id": "ENSG00000152583",
+      "gene_symbol": "SPARCL1",
       "log2FoldChange": 4.5723,
       "padj": 3.5793e-132,
       "baseMean": 998.3379,
       "_row": "ENSG00000152583"
     },
     {
-      "gene": "ENSG00000165995",
+      "ensembl_id": "ENSG00000165995",
+      "gene_symbol": "CACNB2",
       "log2FoldChange": 3.2885,
       "padj": 8.6027e-132,
       "baseMean": 495.7439,
       "_row": "ENSG00000165995"
     },
     {
-      "gene": "ENSG00000120129",
+      "ensembl_id": "ENSG00000120129",
+      "gene_symbol": "DUSP1",
       "log2FoldChange": 2.9452,
       "padj": 1.2192e-124,
       "baseMean": 3412.9664,
       "_row": "ENSG00000120129"
     },
     {
-      "gene": "ENSG00000101347",
+      "ensembl_id": "ENSG00000101347",
+      "gene_symbol": "SAMHD1",
       "log2FoldChange": 3.7644,
       "padj": 1.8831e-124,
       "baseMean": 12718.306,
       "_row": "ENSG00000101347"
     },
     {
-      "gene": "ENSG00000189221",
+      "ensembl_id": "ENSG00000189221",
+      "gene_symbol": "MAOA",
       "log2FoldChange": 3.351,
       "padj": 2.5664e-119,
       "baseMean": 2344.0793,
