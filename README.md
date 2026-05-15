@@ -1,71 +1,114 @@
 # Bioinformatics Agent Studio
 
-AI-assisted bioinformatics and data analysis workflows with automated report generation.
+> Production-grade bioinformatics pipelines with AI-assisted reporting — RNA-seq differential expression, ML classification, and automated literature review.
 
-Each project combines established bioinformatics pipelines (R/Bioconductor, Python/sklearn)
-with LLM-powered agents that automate narrative generation, QC review, literature synthesis,
-and scientific reporting — while keeping human review at every critical decision point.
+[![Docker](https://img.shields.io/badge/docker-bioagent--studio-blue?logo=docker)](Dockerfile)
+[![R](https://img.shields.io/badge/R-4.4-blue?logo=r)](https://www.r-project.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)](https://www.python.org/)
 
 ## What this is
 
-A portfolio of reproducible analysis workflows where:
+A self-contained service that takes raw bioinformatics data and produces a fully-formatted HTML scientific report — with statistical analysis, figures, pathway enrichment, AI-generated narrative, and sample-level QC flags — in **under 2 minutes** with a single command.
 
-- **R/Python pipelines** handle the statistical analysis
-- **AI agents** automate narrative writing, QC flagging, and report generation
-- **Quarto** produces publication-ready HTML/PDF reports
-- **Human review** remains mandatory before any delivery
+The pipeline combines established bioinformatics tools (DESeq2, scikit-learn, g:Profiler) with constrained LLM agents (Claude Sonnet) that automate narrative writing, QC review, and literature synthesis — while keeping human review at every critical decision point.
 
-## Projects
+## Quickstart
 
-### 01 — Airway RNA-seq Differential Expression
+```bash
+docker build -t bioagent-studio .
 
-Bulk RNA-seq analysis comparing dexamethasone-treated vs untreated human airway
-smooth muscle cells (Himes et al. 2014).
+docker run --rm \
+    -v $(pwd)/your_data:/data \
+    -v $(pwd)/your_output:/output \
+    --env-file .env \
+    bioagent-studio \
+    --counts /data/counts.csv \
+    --metadata /data/metadata.csv \
+    --condition treatment \
+    --reference control \
+    --output /output/
+```
 
-**Pipeline**: count matrix → DESeq2 → gene symbols → PCA + volcano + heatmap → report
+That's it. The pipeline runs DESeq2 → pathway enrichment → AI QC agent → AI report writer → Quarto HTML rendering, end-to-end. Output: `your_output/report/report.html`.
 
-**Results**: 4,099 DEGs at padj < 0.05 | Top genes: SPARCL1, CACNB2, DUSP1, SAMHD1, MAOA
+## What you get
 
-**Agents**: QC Agent + Report Writer Agent
+Each pipeline run produces:
+
+- **Statistical results**: filtered DEG table (padj < 0.05), full DESeq2 RDS objects
+- **Publication-quality figures**: PCA, volcano plot, top-DEG heatmap
+- **Pathway enrichment**: GO, KEGG, Reactome (415+ terms typical), with Manhattan and dotplot visualizations
+- **AI-generated QC report**: per-sample 🟢🟡🔴 flags based on library size, gene detection, PCA outlier status
+- **AI-generated scientific narrative**: Executive Summary, Results Interpretation, Limitations — written by a constrained agent that uses only the input JSON, applies standard biological knowledge for interpretation, and never invents data
+- **Quarto HTML report**: everything composed into one shareable document
+
+Total agent cost: **~$0.05 per run** (Claude Sonnet API).
+
+## Architecture
+
+```
+┌──────────────────┐         ┌──────────────────┐
+│  Client inputs   │         │   AI agents      │
+│                  │         │ (Claude Sonnet)  │
+│  counts.csv      │────┐    │                  │
+│  metadata.csv    │    │    │  • QC review     │
+└──────────────────┘    │    │  • Narrative gen │
+                        ▼    │  • Lit. review   │
+              ┌──────────────────┐               │
+              │  bioagent CLI    │◄──────────────┘
+              │  (Python)        │
+              └──────────────────┘
+                        │
+            ┌───────────┼───────────┐
+            ▼           ▼           ▼
+    ┌────────────┐ ┌──────────┐ ┌────────────┐
+    │   DESeq2   │ │g:Profiler│ │   Quarto   │
+    │ (R / Bioc) │ │   (R)    │ │  (HTML)    │
+    └────────────┘ └──────────┘ └────────────┘
+                        │
+                        ▼
+                ┌───────────────┐
+                │  HTML report  │
+                └───────────────┘
+```
+
+**Design principles:**
+- AI agents are *constrained specialists*, not autonomous decision-makers
+- Agent inputs are explicit JSON — agents never make derived calculations from aggregate metrics
+- Scientific conclusions require human validation before delivery
+- Every analysis is fully reproducible via Docker
+
+## Demo projects
+
+The repository ships with three demonstration projects:
+
+### Project 01 — Airway RNA-seq Differential Expression
+Bulk RNA-seq comparing dexamethasone-treated vs untreated human airway smooth muscle cells (Himes et al. 2014). **Result**: 4,099 DEGs at padj < 0.05, with 415 enriched pathways — cytokine signaling ↓, ECM remodeling ↑ (textbook glucocorticoid response).
 
 → [`projects/01-airway-deseq2/`](projects/01-airway-deseq2/)
 
----
-
-### 02 — Breast Cancer Classification
-
-Binary classification of breast tumors from digitized cell nucleus measurements,
-comparing Logistic Regression and Random Forest.
-
-**Pipeline**: Wisconsin dataset → StandardScaler → 5-fold CV → holdout evaluation → feature importance
-
-**Results**: LR test AUC = 0.996, accuracy = 96.5% | Top features: worst perimeter, worst area, worst concave points
+### Project 02 — Breast Cancer Classification
+Binary classification (LR vs RF) on Wisconsin Breast Cancer dataset. **Result**: 96.5% accuracy, AUC = 0.996, 3 false negatives on 114-sample holdout. ML agent generates clinically-aware narrative about precision-recall trade-offs.
 
 → [`projects/02-breast-cancer-ml/`](projects/02-breast-cancer-ml/)
 
----
-
-### 03 — Literature Review: Dexamethasone & Airway Smooth Muscle
-
-Automated PubMed search and structured synthesis of transcriptomic studies on
-glucocorticoid action in human airway smooth muscle cells.
-
-**Pipeline**: PubMed search → abstract fetch → Claude synthesis
-
-**Results**: 8 papers (1995–2025) | Key themes: KLF15, CRISPLD2, steroid resistance, lncRNAs, ChIP-Seq
+### Project 03 — Literature Review Agent
+Given a biological topic, the agent searches PubMed, fetches abstracts, and produces a structured 5-section review (Overview, Key Findings, Methods, Gaps, Next Steps).
 
 → [`projects/03-literature-review/`](projects/03-literature-review/)
 
-## Agents
+## Agents (4)
 
-| Agent | Input | Output | What it does | Cost/run |
+| Agent | Generic? | Input | Output | Cost/run |
 |---|---|---|---|---|
-| QC Agent | `qc_metrics.json` | `qc_report.md` | Flags each sample 🟢🟡🔴 (library size, gene detection, PCA) | ~$0.02 |
-| Report Writer | `analysis_summary.json` | `narrative.md` | Executive summary, results interpretation, limitations | ~$0.02 |
-| ML Results | `model_summary.json` | `ml_narrative.md` | Model comparison, feature interpretation, limitations | ~$0.02 |
-| Literature Review | PubMed query | `literature_review.md` | Searches PubMed, fetches abstracts, structured synthesis | ~$0.05 |
+| QC Agent | ✓ | `qc_metrics.json` | Per-sample 🟢🟡🔴 flags + recommendations | ~$0.02 |
+| Report Writer | ✓ | `analysis_summary.json` | Executive Summary, Results, Limitations | ~$0.02 |
+| ML Results | ✓ | `model_summary.json` | Methods, Comparison, Feature Interpretation, Limitations | ~$0.03 |
+| Literature Review | ✓ | PubMed query | Structured 5-section review of 8 abstracts | ~$0.05 |
 
-## How to run
+All agents are dataset-agnostic: input context flows through JSON, never hardcoded in prompts.
+
+## Running natively (without Docker)
 
 ```bash
 # Setup
@@ -73,39 +116,50 @@ conda env create -f environment.yml
 conda activate bioagent-r
 echo "ANTHROPIC_API_KEY=your-key-here" > .env
 
-# Project 01: RNA-seq
-cd projects/01-airway-deseq2
-Rscript scripts/01_deseq2_analysis.R
-cd ../..
-python agents/qc_agent.py
-python agents/report_writer_agent.py
-cd projects/01-airway-deseq2 && quarto render report/report.qmd
-
-# Project 02: ML classifier
-python projects/02-breast-cancer-ml/scripts/01_train_classifier.py
-python agents/ml_results_agent.py
-cd projects/02-breast-cancer-ml && quarto render report/report.qmd
-
-# Project 03: Literature review
-python agents/literature_agent.py
+# Full pipeline via CLI
+python bioagent.py \
+    --counts data/counts.csv \
+    --metadata data/metadata.csv \
+    --condition treatment \
+    --reference control \
+    --output ./run_output/
 ```
 
 ## Stack
 
-- **R 4.4** + DESeq2, ggplot2, pheatmap, org.Hs.eg.db, Quarto
-- **Python 3.14** + anthropic SDK, scikit-learn, pandas, matplotlib, seaborn, requests
+- **R 4.4** + DESeq2, gprofiler2, org.Hs.eg.db, pheatmap, ggplot2
+- **Python 3.11+** + Anthropic SDK, scikit-learn, pandas, matplotlib, seaborn
+- **Quarto 1.5** for HTML report rendering
 - **Claude Sonnet** (via Anthropic API) for all agent outputs
-- **conda** for environment management
+- **Docker** + Bioconductor base image for portable deployment
 
-## Design principles
+## Input format
 
-- Agents are **specialists with constrained outputs**, not autonomous decision-makers
-- Scientific conclusions require **human validation** before delivery
-- Every analysis is **fully reproducible** from raw inputs
-- QC runs **before** analysis — bad samples are flagged, not silently analyzed
-- Agent inputs must be **explicit and complete** — no derived calculations from aggregate metrics
+**`counts.csv`** — gene counts matrix:
+```
+gene_id,SRR1039508,SRR1039509,SRR1039512,...
+ENSG00000000003,679,448,873,...
+ENSG00000000419,467,515,621,...
+```
+
+**`metadata.csv`** — sample annotations:
+```
+sample_id,condition,batch
+SRR1039508,control,N61311
+SRR1039509,treated,N61311
+SRR1039512,control,N052611
+```
+
+The pipeline validates inputs (file existence, column presence, sample ID matching, reference level) before any analysis runs and exits with clear error messages on failure.
+
+## Limitations
+
+- Gene symbol annotation requires human Ensembl IDs (auto-skips for other organisms)
+- LLM-generated narratives are subject to standard limitations of large language models — outputs are designed for *first-draft acceleration*, not unreviewed delivery
+- Single-condition contrasts only (multi-factor designs supported via batch covariates)
+- Clinical or regulatory applications require additional validation and compliance work beyond what this repo provides
 
 ## Author
 
-Petros Kogios — MSc Bioinformatics, University of Crete  
+**Petros Kogios** — MSc Bioinformatics, University of Crete  
 [github.com/Lakog9](https://github.com/Lakog9)
