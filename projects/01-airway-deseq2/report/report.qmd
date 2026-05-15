@@ -1,0 +1,211 @@
+---
+title: "Airway RNA-seq Differential Expression Analysis"
+subtitle: "Dexamethasone-treated vs Untreated Human Airway Smooth Muscle Cells"
+author: "Petros Kogios"
+date: today
+format:
+  html:
+    toc: true
+    toc-location: left
+    toc-depth: 3
+    theme: cosmo
+    code-fold: true
+    code-tools: true
+    fig-width: 8
+    fig-height: 6
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## Executive Summary
+
+Bulk RNA-seq differential expression analysis comparing dexamethasone-treated (`trt`)
+vs untreated (`untrt`) human airway smooth muscle cells (n=8, 4 cell lines × 2 conditions).
+At an adjusted p-value threshold of 0.05, we identified **4,099 differentially expressed
+genes** (2,201 upregulated, 1,898 downregulated). The first principal component (48%
+variance) cleanly separates treatment groups, and top differentially expressed genes
+include known glucocorticoid response genes (PER1, MT2A, SPARCL1), confirming a strong
+and biologically coherent transcriptional response.
+
+## Background
+
+Dexamethasone is a synthetic glucocorticoid widely used to treat inflammatory diseases
+including asthma. In airway smooth muscle (ASM) cells, glucocorticoids modulate
+contractility, proliferation, and inflammatory signaling. Understanding the
+transcriptional response of ASM cells to dexamethasone is relevant to mechanisms of
+glucocorticoid action in asthma therapy.
+
+### Dataset
+
+We used the `airway` Bioconductor package (Himes et al. 2014, PMID: 24926665):
+
+- **Samples**: 8 RNA-seq libraries
+- **Cell lines**: 4 primary human ASM cultures (N052611, N061011, N080611, N61311)
+- **Conditions**: untreated (`untrt`) vs 1 µM dexamethasone for 18h (`trt`)
+- **Design**: paired (each cell line measured under both conditions)
+- **Data type**: gene-level read counts in a `SummarizedExperiment`
+
+```{r setup}
+library(DESeq2)
+library(ggplot2)
+library(pheatmap)
+library(knitr)
+
+# Load pre-computed results from the analysis pipeline
+dds <- readRDS("../data/dds.rds")
+res <- readRDS("../data/results.rds")
+```
+
+## Methods
+
+### Pre-filtering
+
+To remove genes with very low counts (which provide no statistical power and inflate
+the multiple testing burden), we retained only genes with at least 10 reads in 3 or
+more samples. This filter reduced the gene set from 63,677 to 16,596 expressed genes.
+
+### Differential expression model
+
+We fit a negative binomial generalized linear model with DESeq2 (v1.46) using the
+design formula `~ cell + dex`. Here, `cell` is a batch covariate (4 distinct primary
+cultures with different genetic backgrounds), and `dex` is the variable of interest.
+By modeling cell line explicitly, the test for `dex` is performed *within-line* and
+is robust to inter-individual variability.
+
+We used the Wald test with the contrast `trt vs untrt`, and adjusted p-values for
+multiple testing via the Benjamini-Hochberg procedure. Significance threshold:
+adjusted p-value < 0.05.
+
+## Results
+
+### Sample-level quality control
+
+```{r pca}
+vsd <- vst(dds, blind = FALSE)
+pca_data <- plotPCA(vsd, intgroup = c("dex", "cell"), returnData = TRUE)
+pv <- round(100 * attr(pca_data, "percentVar"))
+
+ggplot(pca_data, aes(PC1, PC2, color = dex, shape = cell)) +
+  geom_point(size = 4) +
+  xlab(paste0("PC1: ", pv[1], "%")) +
+  ylab(paste0("PC2: ", pv[2], "%")) +
+  theme_bw() +
+  ggtitle("Principal Component Analysis")
+```
+
+PC1 (48% of variance) cleanly separates treated from untreated samples, indicating
+that the dexamethasone effect is the dominant source of transcriptional variability
+in this dataset. PC2 (24%) reflects cell-line differences, which are controlled for
+in the design formula.
+
+### Differential expression summary
+
+```{r summary-table}
+n_total <- sum(!is.na(res$padj))
+n_sig <- sum(res$padj < 0.05, na.rm = TRUE)
+n_up <- sum(res$padj < 0.05 & res$log2FoldChange > 0, na.rm = TRUE)
+n_down <- sum(res$padj < 0.05 & res$log2FoldChange < 0, na.rm = TRUE)
+
+summary_df <- data.frame(
+  Metric = c("Genes tested", "Significant DEGs (padj < 0.05)",
+             "Upregulated", "Downregulated"),
+  Value = c(n_total, n_sig, n_up, n_down)
+)
+kable(summary_df)
+```
+
+### Volcano plot
+
+```{r volcano}
+res_df <- as.data.frame(res)
+res_df$significant <- with(res_df,
+    !is.na(padj) & padj < 0.05 & abs(log2FoldChange) > 1)
+
+ggplot(res_df, aes(log2FoldChange, -log10(padj), color = significant)) +
+  geom_point(alpha = 0.6, size = 1) +
+  scale_color_manual(values = c("grey70", "red3")) +
+  geom_vline(xintercept = c(-1, 1), linetype = "dashed") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
+  theme_bw() +
+  labs(title = "Volcano: trt vs untrt",
+       x = "log2 fold change", y = "-log10 padj")
+```
+
+The volcano shows a symmetric distribution of significant DEGs (red) on both sides
+of zero log2 fold change. The most significant hits show -log10(padj) > 100,
+consistent with strong, biologically coherent regulation of canonical glucocorticoid
+target genes.
+
+### Top 30 differentially expressed genes
+
+```{r heatmap}
+#| fig-height: 9
+res_df$gene <- rownames(res_df)
+res_sig <- res_df[!is.na(res_df$padj) & res_df$padj < 0.05, ]
+res_sig <- res_sig[order(res_sig$padj), ]
+top_genes <- head(rownames(res_sig), 30)
+
+mat <- assay(vsd)[top_genes, ]
+mat <- mat - rowMeans(mat)
+anno <- as.data.frame(colData(vsd)[, c("dex", "cell")])
+
+pheatmap(mat, annotation_col = anno, show_rownames = TRUE,
+         main = "Top 30 DEGs by padj (VST, row-centered)")
+```
+
+The heatmap shows complete separation of treated and untreated samples via
+hierarchical clustering, including canonical glucocorticoid-responsive genes such
+as **PER1** (ENSG00000179094, circadian clock regulator), **MT2A** (ENSG00000125148,
+metallothionein), and **SPARCL1** (ENSG00000152583). The biological coherence of
+these top hits provides a strong positive control for the analysis pipeline.
+
+### Top 10 DEGs
+
+```{r top10-table}
+top10 <- head(res_sig[, c("log2FoldChange", "padj", "baseMean")], 10)
+top10$gene_id <- rownames(top10)
+top10 <- top10[, c("gene_id", "log2FoldChange", "padj", "baseMean")]
+kable(top10,
+      digits = c(0, 2, 50, 1),
+      caption = "Top 10 differentially expressed genes (ranked by adjusted p-value)",
+      row.names = FALSE)
+```
+
+## Limitations
+
+- **Small sample size** (n=4 per condition) limits statistical power for detecting
+  small effect sizes.
+- **No effect-size shrinkage applied**: log2 fold changes for low-count genes may be
+  noisy. A future iteration should apply `lfcShrink()` (apeglm or ashr) for more
+  reliable effect-size estimates, particularly for ranking and visualization.
+- **No functional enrichment performed**: pathway analysis (GO, KEGG, Reactome) would
+  strengthen biological interpretation and identify enriched gene programs.
+- **Single time point**: the dataset captures the response at 18h post-treatment;
+  early and late dynamics are not resolved.
+- **No gene symbol annotation**: results are reported with Ensembl IDs only.
+  Mapping to HGNC symbols would improve interpretability.
+
+## Conclusions
+
+The DESeq2 analysis identifies a strong, biologically coherent transcriptional
+response to dexamethasone in human airway smooth muscle cells, with 4,099 DEGs at
+padj < 0.05. Top-ranked hits include canonical glucocorticoid response genes,
+confirming the validity of the analysis pipeline. The clean separation of conditions
+on PC1 and via hierarchical clustering of top DEGs indicates a robust and reproducible
+treatment effect across all four cell lines.
+
+## Session Info
+
+```{r session-info}
+sessionInfo()
+```
+
+## References
+
+Himes BE, Jiang X, Wagner P, Hu R, Wang Q, Klanderman B, et al. *RNA-Seq Transcriptome
+Profiling Identifies CRISPLD2 as a Glucocorticoid Responsive Gene that Modulates
+Cytokine Function in Airway Smooth Muscle Cells.* PLoS One. 2014;9(6):e99625.
+doi:10.1371/journal.pone.0099625
