@@ -105,6 +105,33 @@ def validate_inputs(args):
         fail(f"Reference level '{args.reference}' not found in column '{args.condition}'. "
              f"Available levels: {sorted(levels)}")
 
+    # --- Sample ID consistency check (strict) ---
+    metadata_sample_ids = set()
+    try:
+        with open(args.metadata) as f:
+            reader = csv.reader(f)
+            md_header = next(reader)
+            sid_idx = md_header.index("sample_id")
+            for parts in reader:
+                if len(parts) > sid_idx:
+                    metadata_sample_ids.add(parts[sid_idx])
+    except Exception as e:
+        fail(f"Could not parse sample IDs from metadata: {e}")
+
+    # counts_samples was already cleaned by csv.reader (no quotes/whitespace)
+    counts_sample_ids = set(counts_header[1:])
+
+    in_counts_only = counts_sample_ids - metadata_sample_ids
+    in_metadata_only = metadata_sample_ids - counts_sample_ids
+
+    if in_counts_only or in_metadata_only:
+        msg = "Sample ID mismatch between counts and metadata:"
+        if in_counts_only:
+            msg += f"\n  In counts but missing from metadata: {sorted(in_counts_only)}"
+        if in_metadata_only:
+            msg += f"\n  In metadata but missing from counts: {sorted(in_metadata_only)}"
+        fail(msg)
+
     print(f"  Counts file:  {args.counts}")
     print(f"  Metadata:     {args.metadata}")
     print(f"  Condition:    {args.condition} (ref: {args.reference})")
