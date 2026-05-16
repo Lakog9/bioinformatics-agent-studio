@@ -1,0 +1,141 @@
+{
+  "dataset_shape": {
+    "n_samples": 569,
+    "n_features": 30
+  },
+  "target_name": "diagnosis",
+  "class_balance": {
+    "n_samples": 569,
+    "n_classes": 2,
+    "class_counts": {
+      "0": 212,
+      "1": 357
+    },
+    "minority_class_size": 212,
+    "majority_class_size": 357,
+    "imbalance_ratio": 1.68,
+    "minority_pct": 37.26
+  },
+  "missing_values": {
+    "total_missing_cells": 0,
+    "pct_missing": 0.0,
+    "n_features_with_missing": 0,
+    "features_with_missing": {}
+  },
+  "scale_disparity": {
+    "max_feature_range": 4068.8,
+    "min_feature_range": 0.0289,
+    "scale_ratio": 140569.1,
+    "largest_range_feature": "worst area",
+    "smallest_range_feature": "fractal dimension error"
+  },
+  "constant_features": {
+    "n_constant": 0,
+    "constant_features": [],
+    "n_near_constant": 0,
+    "near_constant_features": []
+  },
+  "correlated_features": {
+    "threshold": 0.95,
+    "n_high_corr_pairs": 15,
+    "high_corr_pairs": [
+      {
+        "feature_a": "mean radius",
+        "feature_b": "mean perimeter",
+        "correlation": 0.998
+      },
+      {
+        "feature_a": "worst radius",
+        "feature_b": "worst perimeter",
+        "correlation": 0.994
+      },
+      {
+        "feature_a": "mean radius",
+        "feature_b": "mean area",
+        "correlation": 0.987
+      },
+      {
+        "feature_a": "mean perimeter",
+        "feature_b": "mean area",
+        "correlation": 0.987
+      },
+      {
+        "feature_a": "worst radius",
+        "feature_b": "worst area",
+        "correlation": 0.984
+      },
+      {
+        "feature_a": "worst perimeter",
+        "feature_b": "worst area",
+        "correlation": 0.978
+      },
+      {
+        "feature_a": "radius error",
+        "feature_b": "perimeter error",
+        "correlation": 0.973
+      },
+      {
+        "feature_a": "mean radius",
+        "feature_b": "worst radius",
+        "correlation": 0.97
+      },
+      {
+        "feature_a": "mean perimeter",
+        "feature_b": "worst perimeter",
+        "correlation": 0.97
+      },
+      {
+        "feature_a": "mean perimeter",
+        "feature_b": "worst radius",
+        "correlation": 0.969
+      },
+      {
+        "feature_a": "mean radius",
+        "feature_b": "worst perimeter",
+        "correlation": 0.965
+      },
+      {
+        "feature_a": "mean area",
+        "feature_b": "worst radius",
+        "correlation": 0.963
+      },
+      {
+        "feature_a": "mean area",
+        "feature_b": "worst perimeter",
+        "correlation": 0.959
+      },
+      {
+        "feature_a": "mean area",
+        "feature_b": "worst area",
+        "correlation": 0.959
+      },
+      {
+        "feature_a": "radius error",
+        "feature_b": "area error",
+        "correlation": 0.952
+      }
+    ]
+  },
+  "outliers": {
+    "total_outlier_cells": 608,
+    "pct_outlier_cells": 3.562,
+    "n_features_with_outliers": 29,
+    "top_outlier_features": {
+      "area error": 65,
+      "radius error": 38,
+      "perimeter error": 38,
+      "worst area": 35,
+      "smoothness error": 30,
+      "compactness error": 28,
+      "fractal dimension error": 28,
+      "symmetry error": 27,
+      "mean area": 25,
+      "worst fractal dimension": 24
+    }
+  },
+  "leakage_risk": {
+    "threshold": 0.98,
+    "n_suspicious_features": 0,
+    "suspicious_features": []
+  }
+}
