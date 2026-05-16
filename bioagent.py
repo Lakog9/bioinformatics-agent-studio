@@ -11,6 +11,8 @@ Workflow:
   4. Run QC agent and Report Writer agent (Claude API)
   5. Render Quarto HTML report
 
+Every run writes a timestamped log to <output>/run.log for audit and debugging.
+
 Usage:
   python bioagent.py --counts <path> --metadata <path> \\
       --condition <col> --reference <level> [--batch <col1,col2>] \\
@@ -18,10 +20,13 @@ Usage:
 """
 
 import argparse
+import csv
+import logging
 import shutil
 import subprocess
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 
@@ -40,13 +45,44 @@ QC_AGENT = AGENTS_DIR / "qc_agent.py"
 REPORT_AGENT = AGENTS_DIR / "report_writer_agent.py"
 
 
+# ============================================
+# Logging setup
+# ============================================
+logger = logging.getLogger("bioagent")
+logger.setLevel(logging.DEBUG)
+
+
+def setup_console_logging():
+    """Console handler — clean output, no timestamps (added immediately)."""
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(ch)
+
+
+def add_file_handler(log_path):
+    """File handler — full timestamped audit log (added once output dir exists)."""
+    fh = logging.FileHandler(log_path, mode="w")
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    ))
+    logger.addHandler(fh)
+    logger.debug(f"File logging started: {log_path}")
+
+
+# ============================================
+# Helpers
+# ============================================
 def fail(msg, code=1):
-    print(f"\nERROR: {msg}", file=sys.stderr)
+    logger.error(f"ERROR: {msg}")
+    logger.error(f"Run aborted with exit code {code}")
     sys.exit(code)
 
 
 def step(num, total, title):
-    print(f"\n[{num}/{total}] {title}")
+    logger.info(f"\n[{num}/{total}] {title}")
 
 
 def check_file(path, label):
@@ -61,7 +97,6 @@ def validate_inputs(args):
 
     # Validate the metadata has the expected columns
     try:
-        import csv
         with open(args.metadata) as f:
             header = next(csv.reader(f))
     except Exception as e:
@@ -118,9 +153,7 @@ def validate_inputs(args):
     except Exception as e:
         fail(f"Could not parse sample IDs from metadata: {e}")
 
-    # counts_samples was already cleaned by csv.reader (no quotes/whitespace)
     counts_sample_ids = set(counts_header[1:])
-
     in_counts_only = counts_sample_ids - metadata_sample_ids
     in_metadata_only = metadata_sample_ids - counts_sample_ids
 
@@ -132,11 +165,13 @@ def validate_inputs(args):
             msg += f"\n  In metadata but missing from counts: {sorted(in_metadata_only)}"
         fail(msg)
 
-    print(f"  Counts file:  {args.counts}")
-    print(f"  Metadata:     {args.metadata}")
-    print(f"  Condition:    {args.condition} (ref: {args.reference})")
-    print(f"  Batch:        {args.batch or '(none)'}")
-    print(f"  Levels found: {sorted(levels)}")
+    logger.info(f"  Counts file:  {args.counts}")
+    logger.info(f"  Metadata:     {args.metadata}")
+    logger.info(f"  Condition:    {args.condition} (ref: {args.reference})")
+    logger.info(f"  Batch:        {args.batch or '(none)'}")
+    logger.info(f"  Levels found: {sorted(levels)}")
+    logger.debug(f"Validation passed: {len(counts_sample_ids)} samples, "
+                 f"condition levels {sorted(levels)}")
 
 
 def setup_output_dir(output_dir, counts_path, metadata_path):
@@ -156,19 +191,25 @@ def setup_output_dir(output_dir, counts_path, metadata_path):
 
 
 def run_subprocess(cmd, cwd, label):
-    """Run a subprocess with error handling."""
+    """Run a subprocess with error handling and logging."""
+    logger.debug(f"{label}: running {' '.join(str(c) for c in cmd)} (cwd={cwd})")
     try:
         result = subprocess.run(
             cmd, cwd=cwd, check=True, capture_output=True, text=True
         )
+        # Log subprocess output to file only (debug level — not shown on console)
+        if result.stdout:
+            logger.debug(f"{label} stdout:\n{result.stdout}")
+        if result.stderr:
+            logger.debug(f"{label} stderr:\n{result.stderr}")
         return result
     except subprocess.CalledProcessError as e:
-        print(f"  {label} FAILED")
-        print(f"  Command: {' '.join(str(c) for c in cmd)}")
-        print(f"  stdout:\n{e.stdout[-2000:] if e.stdout else '(empty)'}")
-        print(f"  stderr:\n{e.stderr[-2000:] if e.stderr else '(empty)'}")
+        logger.error(f"  {label} FAILED")
+        logger.error(f"  Command: {' '.join(str(c) for c in cmd)}")
+        logger.error(f"  stdout:\n{e.stdout[-2000:] if e.stdout else '(empty)'}")
+        logger.error(f"  stderr:\n{e.stderr[-2000:] if e.stderr else '(empty)'}")
         fail(f"{label} failed (exit code {e.returncode})")
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         fail(f"Command not found: {cmd[0]}. Is it installed and in PATH?")
 
 
@@ -184,37 +225,38 @@ def run_deseq(out_dir, args):
     run_subprocess(cmd, cwd=out_dir, label="DESeq2")
     dt = time.time() - t0
 
-    # Parse DEG count from output
     deg_file = out_dir / "results" / "tables" / "DEGs_padj0.05.csv"
     n_degs = sum(1 for _ in open(deg_file)) - 1 if deg_file.exists() else 0
-    print(f"  Done in {dt:.1f}s — {n_degs} significant DEGs")
+    logger.info(f"  Done in {dt:.1f}s — {n_degs} significant DEGs")
+    logger.debug(f"DESeq2 completed: {n_degs} DEGs in {dt:.1f}s")
 
 
 def run_enrichment(out_dir):
     """Step 3: Pathway enrichment (optional — only if human)."""
-    # Check if human annotation was successful (presence of gene_symbol column with mostly mapped)
     deg_file = out_dir / "results" / "tables" / "DEGs_padj0.05.csv"
     if not deg_file.exists():
-        print("  Skipped (no DEG table)")
+        logger.info("  Skipped (no DEG table)")
         return
 
-    import csv
     with open(deg_file) as f:
         reader = csv.DictReader(f)
         if "gene_symbol" not in reader.fieldnames:
-            print("  Skipped (non-human dataset)")
+            logger.info("  Skipped (non-human dataset)")
+            logger.debug("Enrichment skipped: no gene_symbol column")
             return
         rows = list(reader)
         mapped = sum(1 for r in rows if r["gene_symbol"] and r["gene_symbol"] != "NA")
         if not rows or mapped / len(rows) < 0.3:
-            print("  Skipped (insufficient gene symbols)")
+            logger.info("  Skipped (insufficient gene symbols)")
+            logger.debug(f"Enrichment skipped: only {mapped}/{len(rows)} symbols mapped")
             return
 
     t0 = time.time()
     run_subprocess(["Rscript", str(ENRICH_SCRIPT)],
                    cwd=out_dir, label="Pathway enrichment")
     dt = time.time() - t0
-    print(f"  Done in {dt:.1f}s")
+    logger.info(f"  Done in {dt:.1f}s")
+    logger.debug(f"Enrichment completed in {dt:.1f}s")
 
 
 def run_agents(out_dir):
@@ -226,22 +268,21 @@ def run_agents(out_dir):
         t0 = time.time()
         run_subprocess([sys.executable, str(QC_AGENT), str(qc_json)],
                        cwd=REPO_ROOT, label="QC agent")
-        print(f"  QC agent done in {time.time() - t0:.1f}s")
+        logger.info(f"  QC agent done in {time.time() - t0:.1f}s")
     else:
-        print("  QC agent skipped (no qc_metrics.json)")
+        logger.info("  QC agent skipped (no qc_metrics.json)")
 
     if summary_json.exists():
         t0 = time.time()
         run_subprocess([sys.executable, str(REPORT_AGENT), str(summary_json)],
                        cwd=REPO_ROOT, label="Report writer agent")
-        print(f"  Report writer done in {time.time() - t0:.1f}s")
+        logger.info(f"  Report writer done in {time.time() - t0:.1f}s")
     else:
         fail("analysis_summary.json missing — DESeq2 step did not produce it")
 
 
 def render_report(out_dir):
     """Step 5: Quarto render."""
-    # Copy report template
     if not REPORT_TEMPLATE.exists():
         fail(f"Report template not found: {REPORT_TEMPLATE}")
     shutil.copy(REPORT_TEMPLATE, out_dir / "report" / "report.qmd")
@@ -249,7 +290,7 @@ def render_report(out_dir):
     t0 = time.time()
     run_subprocess(["quarto", "render", "report/report.qmd"],
                    cwd=out_dir, label="Quarto render")
-    print(f"  Done in {time.time() - t0:.1f}s")
+    logger.info(f"  Done in {time.time() - t0:.1f}s")
 
 
 def main():
@@ -283,17 +324,41 @@ Example:
 
     args = parser.parse_args()
 
-    print("=" * 60)
-    print("  bioagent — Bioinformatics Agent Studio")
-    print("=" * 60)
+    # Console logging starts immediately
+    setup_console_logging()
+
+    logger.info("=" * 60)
+    logger.info("  bioagent — Bioinformatics Agent Studio")
+    logger.info("=" * 60)
+
+    run_start = time.time()
+
+    # Create output dir early so the log file captures everything,
+    # including any validation failure.
+    out_dir = Path(args.output).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    log_path = out_dir / "run.log"
+    add_file_handler(log_path)
+
+    # Record run parameters in the audit log
+    logger.debug("=" * 50)
+    logger.debug(f"RUN START: {datetime.now().isoformat()}")
+    logger.debug(f"  counts    = {args.counts}")
+    logger.debug(f"  metadata  = {args.metadata}")
+    logger.debug(f"  condition = {args.condition}")
+    logger.debug(f"  reference = {args.reference}")
+    logger.debug(f"  batch     = {args.batch}")
+    logger.debug(f"  output    = {out_dir}")
+    logger.debug(f"  python    = {sys.executable}")
+    logger.debug("=" * 50)
 
     # Step 1: validate
     step(1, 5, "Validating inputs...")
     validate_inputs(args)
 
-    # Setup output
-    out_dir = setup_output_dir(args.output, args.counts, args.metadata)
-    print(f"  Output dir:   {out_dir}")
+    # Setup output (structure + copy inputs)
+    setup_output_dir(args.output, args.counts, args.metadata)
+    logger.info(f"  Output dir:   {out_dir}")
 
     # Step 2: DESeq2
     step(2, 5, "Running DESeq2 differential expression...")
@@ -312,11 +377,14 @@ Example:
     render_report(out_dir)
 
     # Done
+    total = time.time() - run_start
     html_path = out_dir / "report" / "report.html"
-    print("\n" + "=" * 60)
-    print(f"  DONE")
-    print(f"  Report: {html_path}")
-    print("=" * 60)
+    logger.info("\n" + "=" * 60)
+    logger.info(f"  DONE in {total:.1f}s")
+    logger.info(f"  Report: {html_path}")
+    logger.info(f"  Log:    {log_path}")
+    logger.info("=" * 60)
+    logger.debug(f"RUN COMPLETE: total wall time {total:.1f}s")
 
 
 if __name__ == "__main__":
