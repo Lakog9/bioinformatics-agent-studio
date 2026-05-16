@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bioinformatics Agent Studio — Technical Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f2eee3;
+    --paper-2:#e7e0d0;
+    --ink:#1c1813;
+    --ink-soft:#574f43;
+    --green:#1f5638;
+    --green-br:#2a7a4f;
+    --rust:#8a3a25;
+    --rule:#cabf a8;
+    --rule:#c9bfa9;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Newsreader',Georgia,serif;
+    font-size:18px;line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    /* graph-paper texture */
+    background-image:
+      linear-gradient(rgba(28,24,19,0.035) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(28,24,19,0.035) 1px,transparent 1px);
+    background-size:26px 26px;
+  }
+  .wrap{max-width:1140px;margin:0 auto;padding:0 2.4rem;}
+
+  /* ---- running header ---- */
+  .runhead{
+    border-bottom:1px solid var(--ink);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;
+    color:var(--ink-soft);
+    display:flex;justify-content:space-between;
+    padding:0.7rem 0;
+  }
+  .runhead .dot{width:6px;height:6px;background:var(--green-br);
+    border-radius:50%;display:inline-block;margin-right:0.45rem;}
+
+  /* ---- masthead ---- */
+  .masthead{
+    display:grid;grid-template-columns:1.55fr 1fr;gap:3rem;
+    align-items:end;
+    padding:4.5rem 0 3rem;
+    border-bottom:2.5px solid var(--ink);
+  }
+  .issue-line{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.7rem;letter-spacing:0.16em;text-transform:uppercase;
+    color:var(--green);margin-bottom:1.6rem;
+  }
+  h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;font-size:clamp(3rem,7.5vw,5.6rem);
+    line-height:0.98;letter-spacing:-0.025em;
+  }
+  h1 em{font-style:italic;font-weight:400;color:var(--green);}
+  .sub-title{
+    margin-top:1.3rem;font-size:1.16rem;font-style:italic;
+    color:var(--ink-soft);max-width:30rem;
+  }
+  /* volcano plot figure */
+  .fig-volcano{
+    border:1px solid var(--rule);background:var(--paper-2);
+    padding:1rem 1rem 0.7rem;
+  }
+  .fig-volcano svg{display:block;width:100%;height:auto;}
+  .fig-cap{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.66rem;line-height:1.5;letter-spacing:0.03em;
+    color:var(--ink-soft);margin-top:0.55rem;
+    border-top:1px solid var(--rule);padding-top:0.5rem;
+  }
+  .fig-cap b{color:var(--ink);font-weight:500;}
+
+  /* ---- reveal anim ---- */
+  .reveal{opacity:0;transform:translateY(14px);animation:rise .7s ease forwards;}
+  @keyframes rise{to{opacity:1;transform:translateY(0);}}
+  .d1{animation-delay:.05s;} .d2{animation-delay:.14s;}
+  .d3{animation-delay:.23s;} .d4{animation-delay:.32s;}
+
+  /* ---- abstract ---- */
+  .abstract{
+    padding:3rem 0;border-bottom:1px solid var(--rule);
+    display:grid;grid-template-columns:3fr 1fr;gap:3rem;
+  }
+  .abstract-body{font-size:1.12rem;}
+  .abstract-body .lbl{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;
+    color:var(--rust);font-style:normal;
+  }
+  .abstract-body p{margin-top:0.4rem;text-align:justify;hyphens:auto;}
+  .dropcap::first-letter{
+    font-family:'Fraunces',serif;font-weight:600;
+    font-size:4.4rem;line-height:0.78;float:left;
+    margin:0.42rem 0.6rem 0 0;color:var(--green);
+  }
+  .margin-note{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.72rem;line-height:1.65;color:var(--ink-soft);
+    border-left:2px solid var(--green);padding-left:0.9rem;
+  }
+  .margin-note b{color:var(--ink);font-weight:500;}
+
+  /* ---- sections ---- */
+  section{padding:4.2rem 0;border-bottom:1px solid var(--rule);}
+  .sec-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.78rem;color:var(--green);letter-spacing:0.1em;
+  }
+  h2{
+    font-family:'Fraunces',serif;font-weight:500;
+    font-size:2.3rem;letter-spacing:-0.015em;line-height:1.1;
+    margin:0.35rem 0 1.3rem;
+  }
+  .lede{font-size:1.1rem;color:var(--ink-soft);max-width:46rem;}
+  .lede + .lede{margin-top:0.85rem;}
+
+  /* ---- pipeline ---- */
+  .pipeline{
+    display:flex;flex-wrap:wrap;align-items:center;gap:0.45rem;
+    margin-top:2.2rem;font-family:'IBM Plex Mono',monospace;font-size:0.78rem;
+  }
+  .pstep{background:var(--paper-2);border:1px solid var(--rule);
+    padding:0.5rem 0.85rem;}
+  .pstep.io{border-color:var(--green);color:var(--green);}
+  .parrow{color:var(--rust);}
+
+  /* ---- figure cards ---- */
+  .figs{margin-top:2.6rem;display:grid;gap:0;}
+  .figrow{
+    display:grid;grid-template-columns:auto 1fr auto;
+    gap:2rem;align-items:center;
+    padding:1.8rem 0;border-top:1px solid var(--rule);
+    transition:background .2s ease;
+  }
+  .figrow:last-child{border-bottom:1px solid var(--rule);}
+  .figrow:hover{background:var(--paper-2);}
+  .fignum{
+    font-family:'Fraunces',serif;font-size:2.6rem;font-weight:600;
+    color:var(--green);line-height:1;width:3.6rem;
+  }
+  .figrow h3{
+    font-family:'Newsreader',serif;font-weight:600;font-size:1.32rem;
+    margin-bottom:0.25rem;
+  }
+  .figrow h3 .kind{
+    font-family:'IBM Plex Mono',monospace;font-size:0.66rem;
+    letter-spacing:0.1em;text-transform:uppercase;color:var(--rust);
+    display:block;margin-bottom:0.3rem;font-weight:400;
+  }
+  .figrow p{font-size:0.98rem;color:var(--ink-soft);}
+  .figdata{
+    margin-top:0.6rem;font-family:'IBM Plex Mono',monospace;
+    font-size:0.74rem;color:var(--ink);
+  }
+  .figdata span{color:var(--ink-soft);}
+  .figdata b{color:var(--green);font-weight:500;}
+  .btn{
+    font-family:'IBM Plex Mono',monospace;font-size:0.76rem;
+    letter-spacing:0.04em;text-decoration:none;white-space:nowrap;
+    background:var(--ink);color:var(--paper);
+    padding:0.68rem 1.1rem;border:1px solid var(--ink);
+    transition:.18s ease;display:inline-block;
+  }
+  .btn:hover{background:var(--green);border-color:var(--green);}
+  .btn.ghost{background:transparent;color:var(--ink);}
+  .btn.ghost:hover{background:var(--ink);color:var(--paper);}
+
+  /* ---- table of agents ---- */
+  .tbl-cap{
+    font-family:'IBM Plex Mono',monospace;font-size:0.72rem;
+    letter-spacing:0.08em;color:var(--ink-soft);margin-top:2.3rem;
+    text-transform:uppercase;
+  }
+  table{
+    width:100%;border-collapse:collapse;margin-top:0.6rem;
+    font-size:0.96rem;
+  }
+  thead th{
+    text-align:left;font-family:'IBM Plex Mono',monospace;
+    font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;
+    color:var(--ink-soft);font-weight:400;
+    border-bottom:1.5px solid var(--ink);padding:0.6rem 0.8rem;
+  }
+  tbody td{
+    padding:0.85rem 0.8rem;border-bottom:1px solid var(--rule);
+    vertical-align:top;
+  }
+  tbody tr:hover{background:var(--paper-2);}
+  td .aname{font-weight:600;font-family:'Newsreader',serif;}
+  td .adom{
+    font-family:'IBM Plex Mono',monospace;font-size:0.72rem;
+    color:var(--green);
+  }
+  td.desc{color:var(--ink-soft);}
+
+  /* ---- principles ---- */
+  .principles{display:grid;grid-template-columns:repeat(3,1fr);
+    gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:2.4rem;}
+  .principle{background:var(--paper);padding:1.5rem;}
+  .principle .pn{
+    font-family:'IBM Plex Mono',monospace;font-size:0.72rem;
+    color:var(--rust);}
+  .principle h4{
+    font-family:'Fraunces',serif;font-weight:600;font-size:1.15rem;
+    margin:0.4rem 0 0.4rem;}
+  .principle p{font-size:0.92rem;color:var(--ink-soft);}
+
+  /* ---- stack ---- */
+  .stack{display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:1.9rem;}
+  .chip{
+    font-family:'IBM Plex Mono',monospace;font-size:0.76rem;
+    background:var(--paper-2);border:1px solid var(--rule);
+    padding:0.4rem 0.8rem;color:var(--ink-soft);
+  }
+
+  /* ---- colophon ---- */
+  footer{padding:3.2rem 0 4.5rem;}
+  .colophon{
+    display:grid;grid-template-columns:1fr 1fr;gap:2rem;
+    font-family:'IBM Plex Mono',monospace;font-size:0.78rem;
+    color:var(--ink-soft);
+  }
+  .colophon a{color:var(--green);text-decoration:none;}
+  .colophon a:hover{text-decoration:underline;}
+  .colophon .big{
+    font-family:'Fraunces',serif;font-size:1.15rem;color:var(--ink);
+    font-weight:600;margin-bottom:0.3rem;}
+
+  @media(max-width:780px){
+    .masthead,.abstract{grid-template-columns:1fr;gap:2rem;}
+    .principles{grid-template-columns:1fr;}
+    .figrow{grid-template-columns:auto 1fr;}
+    .figrow .btn{grid-column:2;justify-self:start;margin-top:0.6rem;}
+    .colophon{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="runhead">
+    <span><span class="dot"></span>Bioinformatics Agent Studio</span>
+    <span>Technical Overview</span>
+    <span>Rev. 1.0 / 2026</span>
+  </div>
+</div>
+
+<!-- ===== MASTHEAD ===== -->
+<div class="wrap">
+  <div class="masthead">
+    <div>
+      <div class="issue-line reveal d1">Computational Biology · Automated Reporting</div>
+      <h1 class="reveal d2">Reproducible<br>analysis,<br><em>written up.</em></h1>
+      <p class="sub-title reveal d3">
+        A containerized pipeline that turns a raw count matrix into a
+        complete, interpreted scientific report.
+      </p>
+    </div>
+    <figure class="fig-volcano reveal d4">
+      <svg viewBox="0 0 280 200" xmlns="http://www.w3.org/2000/svg">
+        <!-- axes -->
+        <line x1="34" y1="172" x2="266" y2="172" stroke="#1c1813" stroke-width="1"/>
+        <line x1="34" y1="14" x2="34" y2="172" stroke="#1c1813" stroke-width="1"/>
+        <!-- threshold lines -->
+        <line x1="34" y1="120" x2="266" y2="120" stroke="#8a3a25" stroke-width="0.8" stroke-dasharray="3 3"/>
+        <line x1="118" y1="14" x2="118" y2="172" stroke="#8a3a25" stroke-width="0.8" stroke-dasharray="3 3"/>
+        <line x1="182" y1="14" x2="182" y2="172" stroke="#8a3a25" stroke-width="0.8" stroke-dasharray="3 3"/>
+        <!-- non-significant (grey, centre) -->
+        <g fill="#574f43" fill-opacity="0.5">
+          <circle cx="138" cy="150" r="2.4"/><circle cx="150" cy="158" r="2.4"/>
+          <circle cx="128" cy="140" r="2.4"/><circle cx="160" cy="146" r="2.4"/>
+          <circle cx="146" cy="132" r="2.4"/><circle cx="134" cy="160" r="2.4"/>
+          <circle cx="156" cy="138" r="2.4"/><circle cx="142" cy="164" r="2.4"/>
+          <circle cx="166" cy="156" r="2.4"/><circle cx="124" cy="152" r="2.4"/>
+          <circle cx="152" cy="148" r="2.4"/><circle cx="170" cy="142" r="2.4"/>
+        </g>
+        <!-- downregulated (green, left wing) -->
+        <g fill="#1f5638">
+          <circle cx="92" cy="96" r="3"/><circle cx="78" cy="72" r="3"/>
+          <circle cx="64" cy="54" r="3.4"/><circle cx="100" cy="110" r="2.8"/>
+          <circle cx="84" cy="82" r="3"/><circle cx="56" cy="40" r="3.6"/>
+          <circle cx="108" cy="116" r="2.6"/><circle cx="72" cy="64" r="3.2"/>
+          <circle cx="48" cy="30" r="3.4"/><circle cx="96" cy="104" r="2.8"/>
+        </g>
+        <!-- upregulated (rust, right wing) -->
+        <g fill="#8a3a25">
+          <circle cx="200" cy="100" r="3"/><circle cx="214" cy="76" r="3"/>
+          <circle cx="228" cy="56" r="3.4"/><circle cx="194" cy="112" r="2.8"/>
+          <circle cx="208" cy="86" r="3"/><circle cx="236" cy="42" r="3.6"/>
+          <circle cx="188" cy="118" r="2.6"/><circle cx="220" cy="66" r="3.2"/>
+          <circle cx="244" cy="32" r="3.4"/><circle cx="202" cy="108" r="2.8"/>
+        </g>
+        <!-- axis labels -->
+        <text x="150" y="190" font-family="IBM Plex Mono, monospace" font-size="8" fill="#574f43" text-anchor="middle">log₂ fold change</text>
+        <text x="16" y="93" font-family="IBM Plex Mono, monospace" font-size="8" fill="#574f43" text-anchor="middle" transform="rotate(-90 16 93)">−log₁₀ padj</text>
+      </svg>
+      <figcaption class="fig-cap">
+        <b>Fig. 1</b> — Volcano plot schematic. Differentially expressed genes
+        partition into down- (green) and up-regulated (rust) sets beyond
+        significance thresholds.
+      </figcaption>
+    </figure>
+  </div>
+</div>
+
+<!-- ===== ABSTRACT ===== -->
+<div class="wrap">
+  <div class="abstract">
+    <div class="abstract-body">
+      <span class="lbl">Abstract —</span>
+      <p class="dropcap">
+        Bioinformatics Agent Studio couples established statistical pipelines
+        with constrained language-model agents. The computation — differential
+        expression, classification, pathway enrichment — is performed by
+        domain-standard tools. The interpretation — quality-control review,
+        results narrative, literature synthesis — is drafted by agents that
+        receive explicit structured input and operate under strict scientific
+        constraints. The result is a workflow that produces a publication-style
+        report from a raw count matrix in a single command, while preserving
+        human review at every decision point. The system is fully containerized
+        and generic: it accepts arbitrary RNA-seq datasets, not a fixed example.
+      </p>
+    </div>
+    <aside class="margin-note">
+      <b>Status.</b> RNA-seq pipeline production-ready — generic, containerized,
+      tested on independent data.<br><br>
+      <b>Scope.</b> Five agents across three analysis domains.<br><br>
+      <b>Runtime.</b> ~80 s end-to-end on an 8-sample study.
+    </aside>
+  </div>
+</div>
+
+<!-- ===== 1. SYSTEM ===== -->
+<div class="wrap">
+  <section>
+    <div class="sec-num">§ 1</div>
+    <h2>The system</h2>
+    <p class="lede">
+      Two layers. A statistical layer (DESeq2, scikit-learn, g:Profiler) does the
+      science. An agent layer (Claude Sonnet) converts the numerical output into
+      written scientific text. A command-line orchestrator runs the sequence and
+      logs every step.
+    </p>
+    <p class="lede">
+      Agents never see raw data and never make autonomous calls. Each reads a
+      complete JSON record and writes one kind of output — a deliberate
+      constraint, not a limitation.
+    </p>
+    <div class="pipeline">
+      <span class="pstep io">counts.csv + metadata.csv</span>
+      <span class="parrow">&rarr;</span>
+      <span class="pstep">DESeq2</span>
+      <span class="parrow">&rarr;</span>
+      <span class="pstep">enrichment</span>
+      <span class="parrow">&rarr;</span>
+      <span class="pstep">QC agent</span>
+      <span class="parrow">&rarr;</span>
+      <span class="pstep">report agent</span>
+      <span class="parrow">&rarr;</span>
+      <span class="pstep io">report.html</span>
+    </div>
+  </section>
+</div>
+
+<!-- ===== 2. REPORTS ===== -->
+<div class="wrap">
+  <section>
+    <div class="sec-num">§ 2</div>
+    <h2>Demonstration reports</h2>
+    <p class="lede">
+      Three analyses, each generated end-to-end by the pipeline. The reports
+      below are live — they render directly in the browser.
+    </p>
+
+    <div class="figs">
+
+      <div class="figrow">
+        <div class="fignum">01</div>
+        <div>
+          <h3><span class="kind">RNA-seq · Differential Expression</span>Airway Smooth Muscle Response to Dexamethasone</h3>
+          <p>Bulk RNA-seq, dexamethasone-treated vs untreated human airway smooth
+             muscle cells. DESeq2 model, gene-symbol annotation, GO/KEGG/Reactome enrichment.</p>
+          <div class="figdata">
+            <b>4,099</b> <span>DEGs</span> &nbsp;·&nbsp;
+            <b>415</b> <span>enriched terms</span> &nbsp;·&nbsp;
+            <b>16,596</b> <span>genes tested</span>
+          </div>
+        </div>
+        <a class="btn" href="01-airway-deseq2-report.html">Open report &rarr;</a>
+      </div>
+
+      <div class="figrow">
+        <div class="fignum">02</div>
+        <div>
+          <h3><span class="kind">Machine Learning · Classification</span>Breast Tumor Diagnosis from Nuclear Morphology</h3>
+          <p>Binary classification on the Wisconsin dataset. Logistic Regression
+             versus Random Forest, stratified cross-validation, pre-training QC gate.</p>
+          <div class="figdata">
+            <b>0.996</b> <span>test AUC</span> &nbsp;·&nbsp;
+            <b>96.5%</b> <span>accuracy</span> &nbsp;·&nbsp;
+            <b>569</b> <span>samples</span>
+          </div>
+        </div>
+        <a class="btn" href="02-breast-cancer-report.html">Open report &rarr;</a>
+      </div>
+
+      <div class="figrow">
+        <div class="fignum">03</div>
+        <div>
+          <h3><span class="kind">Literature · Evidence Synthesis</span>Automated PubMed Review Agent</h3>
+          <p>Searches PubMed, retrieves abstracts, and synthesizes a structured
+             five-section review: findings, methods, gaps, next steps.</p>
+          <div class="figdata">
+            <b>8</b> <span>papers</span> &nbsp;·&nbsp;
+            <b>1995&ndash;2025</b> <span>span</span> &nbsp;·&nbsp;
+            <b>~$0.05</b> <span>per review</span>
+          </div>
+        </div>
+        <a class="btn ghost" href="https://github.com/Lakog9/bioinformatics-agent-studio/blob/main/projects/03-literature-review/report/literature_review.md">View source &rarr;</a>
+      </div>
+
+    </div>
+  </section>
+</div>
+
+<!-- ===== 3. AGENTS ===== -->
+<div class="wrap">
+  <section>
+    <div class="sec-num">§ 3</div>
+    <h2>The agent layer</h2>
+    <p class="lede">
+      Five specialists. Each takes structured JSON, follows a fixed scientific
+      brief, and emits a single document type.
+    </p>
+    <div class="tbl-cap">Table 1 — Agent inventory</div>
+    <table>
+      <thead>
+        <tr><th>Agent</th><th>Domain</th><th>Function</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="aname">QC Agent</span></td>
+          <td><span class="adom">RNA-seq</span></td>
+          <td class="desc">Flags each sample 🟢 🟡 🔴 on library size, gene detection and PCA position.</td>
+        </tr>
+        <tr>
+          <td><span class="aname">Report Writer</span></td>
+          <td><span class="adom">RNA-seq</span></td>
+          <td class="desc">Drafts Executive Summary, Results Interpretation and Limitations.</td>
+        </tr>
+        <tr>
+          <td><span class="aname">ML Results</span></td>
+          <td><span class="adom">Machine learning</span></td>
+          <td class="desc">Model comparison, feature interpretation, clinically-aware caveats.</td>
+        </tr>
+        <tr>
+          <td><span class="aname">ML QC</span></td>
+          <td><span class="adom">Machine learning</span></td>
+          <td class="desc">Pre-training gate — class imbalance, leakage, scale and collinearity checks.</td>
+        </tr>
+        <tr>
+          <td><span class="aname">Literature Review</span></td>
+          <td><span class="adom">Literature</span></td>
+          <td class="desc">PubMed search, abstract retrieval and structured evidence synthesis.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<!-- ===== 4. PRINCIPLES ===== -->
+<div class="wrap">
+  <section>
+    <div class="sec-num">§ 4</div>
+    <h2>Design principles</h2>
+    <div class="principles">
+      <div class="principle">
+        <div class="pn">i</div>
+        <h4>Constrained agents</h4>
+        <p>Agents are specialists with fixed inputs and outputs — not autonomous
+           decision-makers. The science is done by validated tools.</p>
+      </div>
+      <div class="principle">
+        <div class="pn">ii</div>
+        <h4>Explicit input</h4>
+        <p>Every agent receives a complete JSON record. No agent recomputes a
+           value from aggregate statistics.</p>
+      </div>
+      <div class="principle">
+        <div class="pn">iii</div>
+        <h4>Human in the loop</h4>
+        <p>Generated narrative is a first draft. Scientific conclusions require
+           human validation before delivery.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ===== 5. STACK ===== -->
+<div class="wrap">
+  <section>
+    <div class="sec-num">§ 5</div>
+    <h2>Implementation</h2>
+    <p class="lede">
+      Reproducible by construction — the entire environment is pinned in a
+      Docker image, so a run on any machine yields identical output.
+    </p>
+    <div class="stack">
+      <span class="chip">R 4.4</span>
+      <span class="chip">DESeq2</span>
+      <span class="chip">g:Profiler</span>
+      <span class="chip">Python 3.11</span>
+      <span class="chip">scikit-learn</span>
+      <span class="chip">Claude Sonnet API</span>
+      <span class="chip">Quarto</span>
+      <span class="chip">Docker</span>
+      <span class="chip">conda</span>
+    </div>
+  </section>
+</div>
+
+<!-- ===== COLOPHON ===== -->
+<div class="wrap">
+  <footer>
+    <div class="colophon">
+      <div>
+        <div class="big">Petros Kogios</div>
+        MSc Bioinformatics<br>
+        University of Crete · FORTH · HCMR
+      </div>
+      <div>
+        Repository<br>
+        <a href="https://github.com/Lakog9/bioinformatics-agent-studio">github.com/Lakog9/bioinformatics-agent-studio</a><br><br>
+        Built with R, Python, Claude &amp; Docker.
+      </div>
+    </div>
+  </footer>
+</div>
+
+</body>
+</html>
