@@ -1,7 +1,6 @@
 ---
-title: "Airway RNA-seq Differential Expression Analysis"
-subtitle: "Dexamethasone-treated vs Untreated Human Airway Smooth Muscle Cells"
-author: "Petros Kogios"
+title: "RNA-seq Differential Expression Analysis"
+subtitle: "Bioinformatics Agent Studio"
 date: today
 format:
   html:
@@ -26,54 +25,77 @@ library(DESeq2)
 library(ggplot2)
 library(pheatmap)
 library(knitr)
+library(jsonlite)
 
 dds <- readRDS("../data/dds.rds")
 res <- readRDS("../data/results.rds")
+summary_data <- fromJSON("../data/analysis_summary.json")
 
 res_df <- as.data.frame(res)
 res_df$gene <- rownames(res_df)
 res_sig <- res_df[!is.na(res_df$padj) & res_df$padj < 0.05, ]
 res_sig <- res_sig[order(res_sig$padj), ]
-vsd <- vst(dds, blind = FALSE)
+
+vsd <- tryCatch(
+  vst(dds, blind = FALSE),
+  error = function(e) varianceStabilizingTransformation(dds, blind = FALSE)
+)
+
+# Auto-detect intgroup columns (factor/character only, excluding sizeFactor)
+all_cols <- colnames(colData(dds))
+discrete_cols <- all_cols[sapply(colData(dds), function(x) is.factor(x) || is.character(x))]
+intgroup_cols <- setdiff(discrete_cols, c("sizeFactor", "replaceable"))
+if (length(intgroup_cols) == 0) intgroup_cols <- all_cols[1]
+
+color_var <- intgroup_cols[1]
+shape_var <- if (length(intgroup_cols) >= 2) intgroup_cols[2] else NULL
+
+# Detect optional outputs
+pathway_img <- "../results/figures/04_pathway_enrichment.png"
+pathway_dotplot <- "../results/figures/05_top_pathways_dotplot.png"
+has_pathway <- file.exists(pathway_img)
+heatmap_img <- "../results/figures/03_heatmap_top30.png"
+has_heatmap <- file.exists(heatmap_img)
 ```
 
 {{< include narrative.md >}}
 
 ## Dataset
 
-`airway` Bioconductor package (Himes et al. 2014, PMID: 24926665).
-
-- **Samples**: 8 RNA-seq libraries
-- **Cell lines**: 4 primary human ASM cultures (N052611, N061011, N080611, N61311)
-- **Conditions**: untreated (`untrt`) vs 1 µM dexamethasone for 18h (`trt`)
-- **Design**: paired (each cell line measured under both conditions)
+| Field | Value |
+|---|---|
+| Comparison | `r summary_data$comparison` |
+| Organism | `r summary_data$organism` |
+| Total samples | `r ncol(dds)` |
+| Genes tested (after filtering) | `r summary_data$genes_after_filter` |
+| Design formula | `r summary_data$design_formula` |
 
 ## Methods
 
-We fit a negative binomial generalized linear model with DESeq2 (v1.46) using the
-design formula `~ cell + dex`. The `cell` covariate controls for inter-individual
-variability across the 4 primary cultures. We used the Wald test with the contrast
-`trt vs untrt` and Benjamini-Hochberg correction. Significance threshold: padj < 0.05.
-
-Pre-filtering retained genes with ≥10 reads in ≥3 samples (63,677 → 16,596 genes).
+DESeq2 (v1.46) was used to fit a negative binomial generalized linear model with the design formula shown above. Differential expression was assessed using the Wald test with Benjamini-Hochberg adjustment for multiple testing. Significance threshold: padj < 0.05.
 
 ## Results
 
-### Sample-level QC
+### Sample-level QC (PCA)
 
 ```{r pca}
-pca_data <- plotPCA(vsd, intgroup = c("dex", "cell"), returnData = TRUE)
+pca_data <- plotPCA(vsd, intgroup = intgroup_cols, returnData = TRUE)
 pv <- round(100 * attr(pca_data, "percentVar"))
 
-ggplot(pca_data, aes(PC1, PC2, color = dex, shape = cell)) +
-  geom_point(size = 4) +
+p <- if (!is.null(shape_var)) {
+  ggplot(pca_data, aes_string("PC1", "PC2", color = color_var, shape = shape_var))
+} else {
+  ggplot(pca_data, aes_string("PC1", "PC2", color = color_var))
+}
+
+p + geom_point(size = 4) +
   xlab(paste0("PC1: ", pv[1], "%")) +
   ylab(paste0("PC2: ", pv[2], "%")) +
   theme_bw() +
   ggtitle("Principal Component Analysis")
 ```
 
-### Summary table
+### Summary
 
 ```{r summary-table}
 summary_df <- data.frame(
@@ -92,45 +114,54 @@ kable(summary_df)
 ```{r volcano}
 res_df$significant <- with(res_df,
     !is.na(padj) & padj < 0.05 & abs(log2FoldChange) > 1)
-
 ggplot(res_df, aes(log2FoldChange, -log10(padj), color = significant)) +
   geom_point(alpha = 0.6, size = 1) +
   scale_color_manual(values = c("grey70", "red3")) +
   geom_vline(xintercept = c(-1, 1), linetype = "dashed") +
   geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
   theme_bw() +
-  labs(title = "Volcano: trt vs untrt",
+  labs(title = paste("Volcano:", summary_data$comparison),
        x = "log2 fold change", y = "-log10 padj")
 ```
 
-### Heatmap (top 30 DEGs)
+### Top DEGs
 
-```{r heatmap}
-#| fig-height: 9
-top_genes <- head(rownames(res_sig), 30)
-mat <- assay(vsd)[top_genes, ]
-mat <- mat - rowMeans(mat)
-anno <- as.data.frame(colData(vsd)[, c("dex", "cell")])
-pheatmap(mat, annotation_col = anno, show_rownames = TRUE,
-         main = "Top 30 DEGs by padj (VST, row-centered)")
+```{r top-genes}
+top <- head(res_sig, 20)
+display_cols <- intersect(c("gene", "gene_symbol", "log2FoldChange", "padj", "baseMean"),
+                          colnames(top))
+kable(top[, display_cols], digits = 4)
 ```
 
-### Top 10 DEGs
-
-```{r top10-table}
-top10 <- head(res_sig[, c("gene", "log2FoldChange", "padj", "baseMean")], 10)
-kable(top10, digits = c(0, 2, 50, 1), row.names = FALSE,
-      caption = "Top 10 DEGs ranked by adjusted p-value")
+```{r heatmap-section, eval=has_heatmap, results='asis'}
+cat("### Heatmap of top DEGs\n\n")
+cat("![](", heatmap_img, ")\n", sep = "")
 ```
 
-## Session Info
-
-```{r session-info}
-sessionInfo()
+```{r pathway-section, eval=has_pathway, results='asis'}
+cat("## Pathway Enrichment\n\n")
+cat("Enriched biological pathways and gene sets across GO, KEGG, and Reactome:\n\n")
+cat("### Manhattan plot\n\n")
+cat("![](", pathway_img, ")\n\n", sep = "")
+cat("### Top enriched terms\n\n")
+cat("![](", pathway_dotplot, ")\n", sep = "")
 ```
 
-## Reference
+## Reproducibility
 
-Himes BE et al. *RNA-Seq Transcriptome Profiling Identifies CRISPLD2 as a
-Glucocorticoid Responsive Gene that Modulates Cytokine Function in Airway
-Smooth Muscle Cells.* PLoS One. 2014;9(6):e99625.
+```bash
+docker run --rm \
+    -v /local/data:/data \
+    -v /local/output:/output \
+    --env-file .env \
+    bioagent-studio \
+    --counts /data/counts.csv \
+    --metadata /data/metadata.csv \
+    --condition <condition_col> \
+    --reference <reference_level> \
+    --output /output/
+```
+
+---
+
+*Report generated by Bioinformatics Agent Studio. Scientific narrative produced by an AI agent (Claude Sonnet) constrained to use only the analysis JSON output as input.*

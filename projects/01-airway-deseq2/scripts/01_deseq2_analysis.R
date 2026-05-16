@@ -167,7 +167,13 @@ dir.create("results/tables",  recursive = TRUE, showWarnings = FALSE)
 dir.create("data",            recursive = TRUE, showWarnings = FALSE)
 
 # ----- PCA -----
-vsd <- vst(dds, blind = FALSE)
+vsd <- tryCatch(
+  vst(dds, blind = FALSE),
+  error = function(e) {
+    cat("  vst() unavailable (likely too few genes); using varianceStabilizingTransformation()\n")
+    varianceStabilizingTransformation(dds, blind = FALSE)
+  }
+)
 intgroup_vars <- c(condition_col, batch_cols)
 pca_data <- plotPCA(vsd, intgroup = intgroup_vars, returnData = TRUE)
 pv <- round(100 * attr(pca_data, "percentVar"))
