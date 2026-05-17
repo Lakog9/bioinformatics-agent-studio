@@ -70,9 +70,7 @@ has_heatmap <- file.exists(heatmap_img)
 | Genes tested (after filtering) | `r summary_data$genes_after_filter` |
 | Design formula | `r summary_data$design_formula` |
 
-## Methods
-
-DESeq2 (v1.46) was used to fit a negative binomial generalized linear model with the design formula shown above. Differential expression was assessed using the Wald test with Benjamini-Hochberg adjustment for multiple testing. Significance threshold: padj < 0.05.
+{{< include methods.md >}}
 
 ## Results
 

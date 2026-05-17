@@ -43,6 +43,7 @@ DESEQ_SCRIPT = SCRIPTS_DIR / "01_deseq2_analysis.R"
 ENRICH_SCRIPT = SCRIPTS_DIR / "02_pathway_enrichment.R"
 QC_AGENT = AGENTS_DIR / "qc_agent.py"
 REPORT_AGENT = AGENTS_DIR / "report_writer_agent.py"
+METHODS_AGENT = AGENTS_DIR / "methods_agent.py"
 
 
 # ============================================
@@ -277,6 +278,11 @@ def run_agents(out_dir):
         run_subprocess([sys.executable, str(REPORT_AGENT), str(summary_json)],
                        cwd=REPO_ROOT, label="Report writer agent")
         logger.info(f"  Report writer done in {time.time() - t0:.1f}s")
+
+        t0 = time.time()
+        run_subprocess([sys.executable, str(METHODS_AGENT), str(summary_json)],
+                       cwd=REPO_ROOT, label="Methods agent")
+        logger.info(f"  Methods agent done in {time.time() - t0:.1f}s")
     else:
         fail("analysis_summary.json missing — DESeq2 step did not produce it")
 

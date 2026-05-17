@@ -11,3 +11,4 @@ test_docker_run/
 docker_build.log
 test_pasilla/
 test_logging/
+test_methods/
