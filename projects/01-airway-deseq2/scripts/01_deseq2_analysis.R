@@ -242,6 +242,18 @@ summary_list <- list(
   pca_pc1_variance = pv[1],
   pca_pc2_variance = pv[2],
   design_formula = deparse(design_formula),
+  methods = list(
+    tool = "DESeq2",
+    tool_version = as.character(packageVersion("DESeq2")),
+    r_version = R.version.string,
+    model = "negative binomial generalized linear model",
+    test = "Wald test",
+    multiple_testing_correction = "Benjamini-Hochberg",
+    significance_threshold = 0.05,
+    filtering_criterion = "genes with at least 10 reads in at least 3 samples",
+    normalization = "DESeq2 median-of-ratios size factors",
+    fold_change_threshold_for_enrichment = 1
+  ),
   top5_genes = top5
 )
 write(toJSON(summary_list, pretty = TRUE, auto_unbox = TRUE),

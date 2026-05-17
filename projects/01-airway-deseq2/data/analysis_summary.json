@@ -10,6 +10,18 @@
   "pca_pc1_variance": 48,
   "pca_pc2_variance": 24,
   "design_formula": "~cell + dex",
+  "methods": {
+    "tool": "DESeq2",
+    "tool_version": "1.46.0",
+    "r_version": "R version 4.4.3 (2025-02-28)",
+    "model": "negative binomial generalized linear model",
+    "test": "Wald test",
+    "multiple_testing_correction": "Benjamini-Hochberg",
+    "significance_threshold": 0.05,
+    "filtering_criterion": "genes with at least 10 reads in at least 3 samples",
+    "normalization": "DESeq2 median-of-ratios size factors",
+    "fold_change_threshold_for_enrichment": 1
+  },
   "top5_genes": [
     {
       "ensembl_id": "ENSG00000152583",
