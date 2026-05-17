@@ -12,3 +12,4 @@ docker_build.log
 test_pasilla/
 test_logging/
 test_methods/
+test_critic/

@@ -44,6 +44,7 @@ ENRICH_SCRIPT = SCRIPTS_DIR / "02_pathway_enrichment.R"
 QC_AGENT = AGENTS_DIR / "qc_agent.py"
 REPORT_AGENT = AGENTS_DIR / "report_writer_agent.py"
 METHODS_AGENT = AGENTS_DIR / "methods_agent.py"
+CRITIC_AGENT = AGENTS_DIR / "critic_agent.py"
 
 
 # ============================================
@@ -283,6 +284,13 @@ def run_agents(out_dir):
         run_subprocess([sys.executable, str(METHODS_AGENT), str(summary_json)],
                        cwd=REPO_ROOT, label="Methods agent")
         logger.info(f"  Methods agent done in {time.time() - t0:.1f}s")
+
+        # Critic agent reviews the three drafts above against the JSON.
+        # Its output is an internal QA artifact, NOT part of the client report.
+        t0 = time.time()
+        run_subprocess([sys.executable, str(CRITIC_AGENT), str(summary_json)],
+                       cwd=REPO_ROOT, label="Critic agent")
+        logger.info(f"  Critic agent done in {time.time() - t0:.1f}s")
     else:
         fail("analysis_summary.json missing — DESeq2 step did not produce it")
 
@@ -385,10 +393,14 @@ Example:
     # Done
     total = time.time() - run_start
     html_path = out_dir / "report" / "report.html"
+    critique_path = out_dir / "report" / "critique_report.md"
     logger.info("\n" + "=" * 60)
     logger.info(f"  DONE in {total:.1f}s")
-    logger.info(f"  Report: {html_path}")
-    logger.info(f"  Log:    {log_path}")
+    logger.info(f"  Report:   {html_path}")
+    if critique_path.exists():
+        logger.info(f"  Critique: {critique_path}")
+        logger.info(f"            ^ internal QA — review before delivery")
+    logger.info(f"  Log:      {log_path}")
     logger.info("=" * 60)
     logger.debug(f"RUN COMPLETE: total wall time {total:.1f}s")
 
