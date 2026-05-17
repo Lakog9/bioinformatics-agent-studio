@@ -81,9 +81,9 @@ pca_data <- plotPCA(vsd, intgroup = intgroup_cols, returnData = TRUE)
 pv <- round(100 * attr(pca_data, "percentVar"))
 
 p <- if (!is.null(shape_var)) {
-  ggplot(pca_data, aes_string("PC1", "PC2", color = color_var, shape = shape_var))
+  ggplot(pca_data, aes(x = .data[["PC1"]], y = .data[["PC2"]], color = .data[[color_var]], shape = .data[[shape_var]]))
 } else {
-  ggplot(pca_data, aes_string("PC1", "PC2", color = color_var))
+  ggplot(pca_data, aes(x = .data[["PC1"]], y = .data[["PC2"]], color = .data[[color_var]]))
 }
 
 p + geom_point(size = 4) +

@@ -13,3 +13,4 @@ test_pasilla/
 test_logging/
 test_methods/
 test_critic/
+test_aes/

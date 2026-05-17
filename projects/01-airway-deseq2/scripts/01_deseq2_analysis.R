@@ -178,9 +178,14 @@ intgroup_vars <- c(condition_col, batch_cols)
 pca_data <- plotPCA(vsd, intgroup = intgroup_vars, returnData = TRUE)
 pv <- round(100 * attr(pca_data, "percentVar"))
 
-p_pca <- ggplot(pca_data, aes_string("PC1", "PC2",
-                                       color = condition_col,
-                                       shape = if (length(batch_cols) > 0) batch_cols[1] else NULL)) +
+if (length(batch_cols) > 0) {
+  pca_aes <- aes(x = .data[["PC1"]], y = .data[["PC2"]],
+                 color = .data[[condition_col]], shape = .data[[batch_cols[1]]])
+} else {
+  pca_aes <- aes(x = .data[["PC1"]], y = .data[["PC2"]],
+                 color = .data[[condition_col]])
+}
+p_pca <- ggplot(pca_data, pca_aes) +
   geom_point(size = 4) +
   xlab(paste0("PC1: ", pv[1], "%")) +
   ylab(paste0("PC2: ", pv[2], "%")) +
